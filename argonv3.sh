@@ -3,6 +3,7 @@
 # Set default choices for the Argon version and DAC
 choice=1  # Default to Argon V3 normal
 use_dac="n"  # Default to no DAC
+reboot_confirm="n"
 
 # Function to check if a value is already in the config file
 check_config() {
