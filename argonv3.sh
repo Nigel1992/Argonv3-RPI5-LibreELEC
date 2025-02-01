@@ -5,7 +5,6 @@
 choice=1  # Default to Argon V3 normal
 use_dac="n"  # Default to no DAC
 
-
 # Function to check if a value is already in the config file
 check_config() {
     grep -q "$1" /flash/config.txt
@@ -69,10 +68,6 @@ read -p "Are you using Argon V3 DAC? (y/n) " use_dac
 # Apply settings based on selection
 if [ "$choice" -eq 1 ]; then
     # Argon V3 normal
-    if ! check_config 'PSU_MAX_CURRENT=5000'; then
-        apply_config 'PSU_MAX_CURRENT=5000'
-    fi
-
     mount -o remount,rw /flash
     for setting in "dtoverlay=gpio-ir,gpio_pin=23" "dtparam=i2c=on" "enable_uart=1" "usb_max_current_enable=1"; do
         if ! check_config "$setting"; then
@@ -90,6 +85,9 @@ if [ "$choice" -eq 1 ]; then
         fi
     fi
     mount -o remount,ro /flash
+
+    # Apply PSU_MAX_CURRENT=5000 to EEPROM (only for Argon V3 normal)
+    echo -e 'PSU_MAX_CURRENT=5000' | tee /tmp/boot.conf && rpi-eeprom-config -a /tmp/boot.conf && rm /tmp/boot.conf
 
 elif [ "$choice" -eq 2 ]; then
     # Argon V3 with NVMe
@@ -119,6 +117,9 @@ elif [ "$choice" -eq 2 ]; then
     fi
 
     mount -o remount,ro /flash
+
+    # Apply PSU_MAX_CURRENT=5000 to EEPROM (only for Argon V3 with NVMe)
+    echo -e 'BOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000' | tee /tmp/boot.conf && rpi-eeprom-config -a /tmp/boot.conf && rm /tmp/boot.conf
 fi
 
 # Ask if the user wants to reboot
