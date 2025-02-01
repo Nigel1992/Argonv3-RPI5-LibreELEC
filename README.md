@@ -13,6 +13,5 @@ This script automates the process of configuring your Raspberry Pi for use with 
 
 ## Requirements
 
-- A Raspberry Pi with Raspberry Pi OS or compatible system.
+- A Raspberry Pi 5 with LibreELEC.
 - Argon V3 case (normal or with NVMe).
-- No special permissions are required to run this script.
