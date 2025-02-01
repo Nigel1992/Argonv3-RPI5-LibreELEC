@@ -21,11 +21,11 @@ echo -e "\e[1;32mYou selected Argon V3 normal.\e[0m"
 # Apply settings based on selection
 if [ "$choice" -eq 1 ]; then
     # Argon V3 normal
-    if ! rpi-eeprom-config | grep -q 'PSU_MAX_CURRENT=5000'; then
-        apply_eeprom_config 'PSU_MAX_CURRENT=5000'
-        echo -e "\e[1;32mEEPROM value PSU_MAX_CURRENT=5000 added.\e[0m"
+    if ! rpi-eeprom-config | grep -q 'BOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000'; then
+        apply_eeprom_config 'BOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000'
+        echo -e "\e[1;32mEEPROM value BOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000 added.\e[0m"
     else
-        echo -e "\e[1;33mEEPROM value PSU_MAX_CURRENT=5000 already present. Skipping...\e[0m"
+        echo -e "\e[1;33mEEPROM value BOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000 already present. Skipping...\e[0m"
     fi
 
     mount -o remount,rw /flash
