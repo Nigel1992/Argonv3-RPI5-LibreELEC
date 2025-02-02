@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# Version 1.6.0
-# Copyright - Nigel Hagen
+# Version 1.6.1
 
 # Set default choices for the Argon version and DAC
 choice=1        # Default to Argon V3 normal
