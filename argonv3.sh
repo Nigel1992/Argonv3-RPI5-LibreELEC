@@ -145,17 +145,17 @@ if [ "$choice" = "1" ]; then
 elif [ "$choice" = "2" ]; then
     # Argon V3 with NVMe
     if ! check_eeprom_setting "BOOT_ORDER=0xf416"; then
-        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000"
+        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416"
     else
         printf "\e[1;33mEEPROM setting BOOT_ORDER=0xf416 already present. Skipping...\e[0m\n"
     fi
     if ! check_eeprom_setting "PCIE_PROBE=1"; then
-        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000"
+        eeprom_updates="$eeprom_updates\nPCIE_PROBE=1"
     else
         printf "\e[1;33mEEPROM setting PCIE_PROBE=1 already present. Skipping...\e[0m\n"
     fi
     if ! check_eeprom_setting "PSU_MAX_CURRENT=5000"; then
-        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000"
+        eeprom_updates="$eeprom_updates\nPSU_MAX_CURRENT=5000"
     else
         printf "\e[1;33mEEPROM setting PSU_MAX_CURRENT=5000 already present. Skipping...\e[0m\n"
     fi
