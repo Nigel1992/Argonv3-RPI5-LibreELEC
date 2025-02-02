@@ -184,3 +184,4 @@ if [ "$config_changed" -eq 1 ] || [ "$eeprom_changed" -eq 1 ]; then
     fi
 else
     echo "Reboot wasn't needed."
+fi
