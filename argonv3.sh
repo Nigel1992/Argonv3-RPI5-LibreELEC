@@ -183,4 +183,4 @@ if [ "$config_changed" -eq 1 ] || [ "$eeprom_changed" -eq 1 ]; then
         echo "Reboot skipped. Please remember to reboot your Raspberry Pi later."
     fi
 else
-    printf "\e
+    echo "Reboot wasn't needed."
