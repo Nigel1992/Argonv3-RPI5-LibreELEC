@@ -85,7 +85,7 @@ if [ "$choice" = "2" ]; then
 fi
 
 # Ask if the user is using Argon V3 DAC
-printf "\e[1;32mAre you using Argon V3 DAC (y/n) ?\e[0m"
+printf "\e[1;32mAre you using Argon V3 DAC (y/n) ?\e"
 read use_dac
 
 # Apply settings based on selection
