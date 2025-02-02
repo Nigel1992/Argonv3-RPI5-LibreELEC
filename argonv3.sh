@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Version 1.6.1
+# Version 1.0.0
 
 # Set default choices for the Argon version and DAC
 choice=1        # Default to Argon V3 normal
