@@ -1,6 +1,7 @@
 #!/bin/sh
 clear
 echo "Version 1.0.0 (02/02/2025)"
+printf "\e[1;31mWARNING: Only reboot if EEPROM was successful or skipped !!!\e[0m\n"
 echo "--------------------------"
 # Version 1.0.0
 
@@ -144,17 +145,17 @@ if [ "$choice" = "1" ]; then
 elif [ "$choice" = "2" ]; then
     # Argon V3 with NVMe
     if ! check_eeprom_setting "BOOT_ORDER=0xf416"; then
-        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416"
+        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000"
     else
         printf "\e[1;33mEEPROM setting BOOT_ORDER=0xf416 already present. Skipping...\e[0m\n"
     fi
     if ! check_eeprom_setting "PCIE_PROBE=1"; then
-        eeprom_updates="$eeprom_updates\nPCIE_PROBE=1"
+        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000"
     else
         printf "\e[1;33mEEPROM setting PCIE_PROBE=1 already present. Skipping...\e[0m\n"
     fi
     if ! check_eeprom_setting "PSU_MAX_CURRENT=5000"; then
-        eeprom_updates="$eeprom_updates\nPSU_MAX_CURRENT=5000"
+        eeprom_updates="$eeprom_updates\nBOOT_ORDER=0xf416\nPCIE_PROBE=1\nPSU_MAX_CURRENT=5000"
     else
         printf "\e[1;33mEEPROM setting PSU_MAX_CURRENT=5000 already present. Skipping...\e[0m\n"
     fi
@@ -172,7 +173,7 @@ else
 fi
 
 rm /tmp/current_eeprom.conf
-printf "\e[1;31mWARNING: Only reboot if EEPROM was successful or skipped !!!\e[0m\n"
+
 
 # Determine if a reboot is needed
 if [ "$config_changed" -eq 1 ] || [ "$eeprom_changed" -eq 1 ]; then
