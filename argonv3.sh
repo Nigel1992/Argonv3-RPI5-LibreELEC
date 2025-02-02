@@ -1,5 +1,5 @@
 #!/bin/sh
-
+echo "Version 1.0.0 (02/02/2025)"
 # Version 1.0.0
 
 # Set default choices for the Argon version and DAC
