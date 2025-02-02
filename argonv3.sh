@@ -1,6 +1,8 @@
 #!/bin/sh
 clear
+printf "\e[1;32mArgon V3 - LibreELEC Set-up script\e[0m\n"
 echo "Version 1.0.0 (02/02/2025)"
+echo "--------------------------"
 printf "\e[1;31mWARNING: Only reboot if EEPROM was successful or skipped !!!\e[0m\n"
 echo "--------------------------"
 # Version 1.0.0
