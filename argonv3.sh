@@ -1,20 +1,10 @@
 #!/bin/sh
 clear
-
-# ASCII art header
-echo "  _    _                   ___   __   ____           ___  _  _            _       ___     "
-echo " / \\  (_)_ __   __ _      / _ \\  \\ \\ / / |         /___\\| || | __ _  ___| |_   / _ \\    "
-echo "/ _ \\ | | '_ \\ / _\` |    / /_\\ \\  \\ V /| |       //  // | || |/ _\` |/ __| __| / /_\\ \\   "
-echo "/ ___ \\| | | | | (_| |  / /_\\\\|  | | | || |   / \\_//  | || | (_| | (__| |_ / /_\\\\ \\  "
-echo "/_/   \\_\\_|_| |_|\\__, |  \\____/ |_|_| |_| |_| \\___/   |_|\\__,_|\\___|\\__| \\_____/   "
-echo "                  |___/                                                                                         "
-
-echo ""
+printf "\e[1;32mArgon V3 - LibreELEC Set-up script\e[0m\n"
 echo "Version 1.0.0 (02/02/2025)"
 echo "--------------------------"
 printf "\e[1;31mWARNING: Only reboot if EEPROM was successful or skipped !!!\e[0m\n"
 echo "--------------------------"
-# Version 1.0.0
 
 # Set default choices for the Argon version and DAC
 choice=1        # Default to Argon V3 normal
