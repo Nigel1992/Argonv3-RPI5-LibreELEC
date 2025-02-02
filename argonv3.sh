@@ -172,6 +172,7 @@ else
 fi
 
 rm /tmp/current_eeprom.conf
+printf "\e[1;31mWARNING: Only reboot if EEPROM was successful or skipped !!!\e[0m\n"
 
 # Determine if a reboot is needed
 if [ "$config_changed" -eq 1 ] || [ "$eeprom_changed" -eq 1 ]; then
