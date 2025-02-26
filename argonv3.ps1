@@ -7,7 +7,14 @@ $THEME_PRIMARY = [System.Drawing.Color]::FromArgb(0, 120, 212)     # Microsoft B
 $THEME_SECONDARY = [System.Drawing.Color]::FromArgb(45, 45, 45)    # Dark Gray
 $THEME_TEXT = [System.Drawing.Color]::FromArgb(250, 250, 250)      # Almost White
 
-# Add at the top of your script with other variables
+# Get the script's directory
+$PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
+if ([string]::IsNullOrEmpty($PSScriptRoot)) {
+    $PSScriptRoot = $env:TEMP + "\ArgonSetup"
+    New-Item -ItemType Directory -Force -Path $PSScriptRoot | Out-Null
+}
+
+# Set file paths
 $SETTINGS_FILE = Join-Path $PSScriptRoot "argon_settings.xml"
 $CONNECTION_FILE = Join-Path $PSScriptRoot "connection_settings.xml"
 $SCRIPT_VERSION = "1.2.0 (02/26/2024)"
