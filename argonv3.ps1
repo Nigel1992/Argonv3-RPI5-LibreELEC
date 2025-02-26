@@ -10,7 +10,7 @@ $THEME_TEXT = [System.Drawing.Color]::FromArgb(250, 250, 250)      # Almost Whit
 # Get the script's directory
 $PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 if ([string]::IsNullOrEmpty($PSScriptRoot)) {
-    $PSScriptRoot = $env:TEMP + "\ArgonSetup"
+    $PSScriptRoot = "$env:USERPROFILE\Documents\ArgonSetup"
     New-Item -ItemType Directory -Force -Path $PSScriptRoot | Out-Null
 }
 
