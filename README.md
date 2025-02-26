@@ -108,7 +108,7 @@ Before making any changes, the script can:
 The script stores settings in your Documents folder:
 - Connection settings for quick reconnection
 - Configuration preferences
-- All settings are encrypted and stored locally
+- All settings are stored locally
 
 ## ⚠️ Important Notes
 
@@ -123,7 +123,6 @@ The script stores settings in your Documents folder:
 
 - Passwords are handled securely
 - SSH connections use secure protocols
-- Local settings are stored safely
 - No data is transmitted online
 - All operations are logged for verification
 
