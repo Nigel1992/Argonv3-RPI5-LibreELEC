@@ -164,7 +164,7 @@ For issues and questions:
 
 ## 🔄 Updates
 
-You can always get the latest version using the installation commands above.
+You can always get the latest version using the USAGE commands above.
 
 ## 🛠️ Troubleshooting
 
