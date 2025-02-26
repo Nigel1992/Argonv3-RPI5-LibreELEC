@@ -31,7 +31,7 @@ Set-ExecutionPolicy RemoteSigned -Force
 irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
 ```
 
-Alternatively, download and run manually:
+Alternatively, download and run manually (you'll need to do this every time the script gets an update, so not recommended):
 1. Download the script
 2. Right-click the script and select "Properties"
 3. Check the "Unblock" box and click OK
