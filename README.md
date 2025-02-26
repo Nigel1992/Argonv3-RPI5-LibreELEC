@@ -128,6 +128,9 @@ The script stores settings in your Documents folder:
 - SSH connections use secure protocols
 - No data is transmitted online
 - All operations are logged for verification
+  
+## 🔷 To-Do
+- Fix log scrolling
 
 ## 🤝 Contributing
 
