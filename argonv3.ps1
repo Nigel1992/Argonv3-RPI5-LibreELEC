@@ -12,6 +12,27 @@ $THEME_PRIMARY = [System.Drawing.Color]::FromArgb(0, 120, 212)     # Microsoft B
 $THEME_SECONDARY = [System.Drawing.Color]::FromArgb(45, 45, 45)    # Dark Gray
 $THEME_TEXT = [System.Drawing.Color]::FromArgb(250, 250, 250)      # Almost White
 
+# Define theme dictionaries
+$LightTheme = @{
+    Background = [System.Drawing.Color]::White
+    Text = [System.Drawing.Color]::Black
+    GroupBackground = [System.Drawing.Color]::White
+    ProgressBackground = [System.Drawing.Color]::FromArgb(240, 240, 240)
+    LogBackground = [System.Drawing.Color]::White
+    LogText = [System.Drawing.Color]::Black
+}
+
+$DarkTheme = @{
+    Background = [System.Drawing.Color]::FromArgb(32, 32, 32)
+    Text = [System.Drawing.Color]::White
+    GroupBackground = [System.Drawing.Color]::FromArgb(45, 45, 45)
+    ProgressBackground = [System.Drawing.Color]::FromArgb(64, 64, 64)
+    LogBackground = [System.Drawing.Color]::FromArgb(30, 30, 30)
+    LogText = [System.Drawing.Color]::FromArgb(220, 220, 220)
+}
+
+$CurrentTheme = $LightTheme
+
 # Set consistent script directory
 $PSScriptRoot = "$env:USERPROFILE\Documents\ArgonSetup"
 $null = New-Item -ItemType Directory -Force -Path $PSScriptRoot
@@ -966,17 +987,72 @@ $footerPanel.BackColor = $THEME_SECONDARY
 $footerLayout = New-Object System.Windows.Forms.TableLayoutPanel
 $footerLayout.Dock = [System.Windows.Forms.DockStyle]::Fill
 $footerLayout.RowCount = 1
-$footerLayout.ColumnCount = 3
+$footerLayout.ColumnCount = 4  # Changed to 4 to add theme toggle
 $footerLayout.Padding = New-Object System.Windows.Forms.Padding(5, 0, 5, 0)
 
 # Set column styles
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 25)))
+$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 15)))
 $footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 25)))
+$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
+$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 15)))
 
-# Empty left column for balance
-$leftLabel = New-Object System.Windows.Forms.Label
-$footerLayout.Controls.Add($leftLabel, 0, 0)
+# Theme Toggle Button (left column)
+$themeToggle = New-Object System.Windows.Forms.Button
+$themeToggle.Text = "Dark"
+$themeToggle.Font = New-Object System.Drawing.Font("Segoe UI", 9)
+$themeToggle.ForeColor = $THEME_TEXT
+$themeToggle.BackColor = $THEME_SECONDARY
+$themeToggle.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$themeToggle.FlatAppearance.BorderSize = 0
+$themeToggle.Dock = [System.Windows.Forms.DockStyle]::Fill
+$themeToggle.Cursor = [System.Windows.Forms.Cursors]::Hand
+$footerLayout.Controls.Add($themeToggle, 0, 0)
+
+# Function to apply theme
+function Apply-Theme {
+    param (
+        [hashtable]$Theme
+    )
+    
+    $form.BackColor = $Theme.Background
+    $form.ForeColor = $Theme.Text
+    
+    # Update group boxes
+    $connectionGroup.BackColor = $Theme.GroupBackground
+    $connectionGroup.ForeColor = $Theme.Text
+    $configGroup.BackColor = $Theme.GroupBackground
+    $configGroup.ForeColor = $Theme.Text
+    
+    # Update labels
+    $ipLabel.ForeColor = $Theme.Text
+    $userLabel.ForeColor = $Theme.Text
+    $passLabel.ForeColor = $Theme.Text
+    $versionLabel.ForeColor = $Theme.Text
+    $pcieLabel.ForeColor = $Theme.Text
+    $dacCheckbox.ForeColor = $Theme.Text
+    
+    # Update progress container
+    $progressContainer.BackColor = $Theme.ProgressBackground
+    
+    # Update log box
+    $logBox.BackColor = $Theme.LogBackground
+    $logBox.ForeColor = $Theme.LogText
+    
+    # Update theme toggle text
+    $themeToggle.Text = if ($Theme -eq $DarkTheme) { "Light" } else { "Dark" }
+    
+    # Store current theme
+    $script:CurrentTheme = $Theme
+}
+
+# Theme toggle click handler
+$themeToggle.Add_Click({
+    if ($CurrentTheme -eq $LightTheme) {
+        Apply-Theme $DarkTheme
+    } else {
+        Apply-Theme $LightTheme
+    }
+})
 
 # Copyright Label (center column)
 $copyrightLabel = New-Object System.Windows.Forms.Label
@@ -1014,3 +1090,6 @@ if (!(Ensure-SSHModule)) {
 
 # Show the form
 $null = $form.ShowDialog()
+
+# Apply initial theme
+Apply-Theme $LightTheme
