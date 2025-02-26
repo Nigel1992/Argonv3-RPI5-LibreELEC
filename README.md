@@ -158,7 +158,7 @@ For issues and questions:
 
 ## 🔄 Updates
 
-The script checks for updates on launch and will notify you if a new version is available. You can always get the latest version using the installation commands above.
+You can always get the latest version using the installation commands above.
 
 ## 🛠️ Troubleshooting
 
@@ -182,4 +182,3 @@ Common issues and solutions:
 
 ---
 Made with ❤️ for the Raspberry Pi community
-```
