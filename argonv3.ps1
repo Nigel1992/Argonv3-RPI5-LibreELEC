@@ -564,6 +564,61 @@ function Load-SavedSettings {
     }
 }
 
+# Check for SSH module and install if missing
+function Ensure-SSHModule {
+    if (!(Get-Module -ListAvailable -Name "Posh-SSH")) {
+        $installResult = [System.Windows.Forms.MessageBox]::Show(
+            "The required SSH module (Posh-SSH) is not installed.`n`nThis module is necessary for connecting to your LibreELEC device.`n`nWould you like to install it now?",
+            "Required Module Missing",
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question
+        )
+
+        if ($installResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+            try {
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Installing Posh-SSH module...`n`nThis may take a few moments. Please wait.",
+                    "Installing Module",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Information
+                )
+                
+                Log-Message "SSH module not found. Installing Posh-SSH..." "INFO"
+                Install-Module -Name Posh-SSH -Force -Scope CurrentUser
+                Log-Message "SSH module installed successfully" "SUCCESS"
+
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Posh-SSH module has been installed successfully!",
+                    "Installation Complete",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Information
+                )
+                return $true
+            }
+            catch {
+                Log-Message "Failed to install SSH module: $($_.Exception.Message)" "ERROR"
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Failed to install required SSH module.`n`nError: $($_.Exception.Message)`n`nPlease ensure you have internet connection and try running PowerShell as Administrator.",
+                    "Module Installation Error",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Error
+                )
+                return $false
+            }
+        } else {
+            Log-Message "User declined to install SSH module" "WARNING"
+            [System.Windows.Forms.MessageBox]::Show(
+                "The SSH module is required for this application to work.`n`nPlease run the application again when you're ready to install the module.",
+                "Installation Cancelled",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Warning
+            )
+            return $false
+        }
+    }
+    return $true
+}
+
 # Now continue with your existing UI code
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
