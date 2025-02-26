@@ -1,3 +1,8 @@
+# Hide console output for cleaner execution
+$ProgressPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'SilentlyContinue'
+Clear-Host
+
 # Add required assemblies
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
