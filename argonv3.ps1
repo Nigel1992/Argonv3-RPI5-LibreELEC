@@ -14,7 +14,7 @@ $THEME_TEXT = [System.Drawing.Color]::FromArgb(250, 250, 250)      # Almost Whit
 
 # Set consistent script directory
 $PSScriptRoot = "$env:USERPROFILE\Documents\ArgonSetup"
-New-Item -ItemType Directory -Force -Path $PSScriptRoot | Out-Null
+$null = New-Item -ItemType Directory -Force -Path $PSScriptRoot
 
 # Set file paths
 $SETTINGS_FILE = Join-Path $PSScriptRoot "argon_settings.xml"
@@ -235,43 +235,71 @@ function Apply-Configuration {
             Log-Message "Preparing backup location..." "INFO"
 
             # Create backup directory with verbose output
-            $createDirScript = @'
-#!/bin/sh
-set -x
-if [ ! -d "/storage/ArgonScriptBackup" ]; then
-    mkdir -p "/storage/ArgonScriptBackup"
-    MKDIR_STATUS=$?
-    echo "Directory creation status: $MKDIR_STATUS"
-    
-    chmod 755 "/storage/ArgonScriptBackup"
-    CHMOD_STATUS=$?
-    echo "Chmod status: $CHMOD_STATUS"
-    
-    chown root:root "/storage/ArgonScriptBackup"
-    CHOWN_STATUS=$?
-    echo "Chown status: $CHOWN_STATUS"
-    
-    if [ $MKDIR_STATUS -eq 0 ] && [ $CHMOD_STATUS -eq 0 ] && [ $CHOWN_STATUS -eq 0 ]; then
-        echo "Backup directory created and configured successfully"
-        ls -la "/storage/ArgonScriptBackup"
-        exit 0
-    else
-        echo "Failed to setup backup directory"
-        exit 1
-    fi
-else
-    echo "Backup directory already exists"
-    ls -la "/storage/ArgonScriptBackup"
-    exit 0
-fi
-'@
+            $createDirScript = 'ls -la /storage/ && mkdir -p /storage/ArgonScriptBackup && ls -la /storage/ArgonScriptBackup'
 
             $createDirResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $createDirScript
 
-            Log-Message ("Directory creation output: " + $createDirResult.Output) "INFO"
-            Log-Message ("Directory creation error: " + $createDirResult.Error) "INFO"
+            Log-Message "Storage directory contents: " "INFO"
+            Log-Message $createDirResult.Output "INFO"
 
-            if ($createDirResult.ExitStatus -ne 0) {
+            if ($createDirResult.ExitStatus -eq 0) {
+                Log-Message "Backup directory created successfully" "SUCCESS"
+                
+                # Set permissions separately
+                $permissionScript = 'chmod 755 /storage/ArgonScriptBackup && chown root:root /storage/ArgonScriptBackup'
+                $permissionResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $permissionScript
+                
+                if ($permissionResult.ExitStatus -eq 0) {
+                    Log-Message "Permissions set successfully" "SUCCESS"
+                    Update-Progress -PercentComplete 10 -Status "Creating backups"
+                    Log-Message "Creating configuration backups..." "INFO"
+
+                    # Mount flash directory as writable
+                    Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
+
+                    # Create backups
+                    $backupSuccess = $true
+                    $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/flash/config.txt" -FileType "config file")
+                    $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/tmp/current_eeprom.conf" -FileType "EEPROM configuration")
+
+                    if (-not $backupSuccess) {
+                        $continueResult = [System.Windows.Forms.MessageBox]::Show(
+                            "Failed to create some backups. Do you want to continue anyway?",
+                            "Backup Warning",
+                            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                            [System.Windows.Forms.MessageBoxIcon]::Warning
+                        )
+                        if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
+                            Log-Message "Configuration cancelled by user due to backup failure" "WARNING"
+                            Update-Progress -PercentComplete 0 -Status "Ready"
+                            return
+                        }
+                    } else {
+                        [System.Windows.Forms.MessageBox]::Show(
+                            "Backups created successfully!`n`nLocation: /storage/ArgonScriptBackup`n`nYou can find your backups there with timestamps for easy identification.",
+                            "Backup Success",
+                            [System.Windows.Forms.MessageBoxButtons]::OK,
+                            [System.Windows.Forms.MessageBoxIcon]::Information
+                        )
+                        Log-Message "Backups created successfully in /storage/ArgonScriptBackup" "SUCCESS"
+                    }
+                } else {
+                    Log-Message "Warning: Could not set permissions - $($permissionResult.Error)" "WARNING"
+                    $continueResult = [System.Windows.Forms.MessageBox]::Show(
+                        "Failed to set permissions on backup directory. Do you want to continue without backups?",
+                        "Backup Directory Error",
+                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                        [System.Windows.Forms.MessageBoxIcon]::Warning
+                    )
+                    if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
+                        Log-Message "Configuration cancelled due to backup directory permission failure" "WARNING"
+                        Update-Progress -PercentComplete 0 -Status "Ready"
+                        return
+                    }
+                    Log-Message "Continuing without backups" "WARNING"
+                }
+            } else {
+                Log-Message "Failed to create backup directory - $($createDirResult.Error)" "ERROR"
                 $continueResult = [System.Windows.Forms.MessageBox]::Show(
                     "Failed to create backup directory. Do you want to continue without backups?",
                     "Backup Directory Error",
@@ -284,39 +312,6 @@ fi
                     return
                 }
                 Log-Message "Continuing without backups" "WARNING"
-            } else {
-                Update-Progress -PercentComplete 10 -Status "Creating backups"
-                Log-Message "Creating configuration backups..." "INFO"
-
-                # Mount flash directory as writable
-                Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
-
-                # Create backups
-                $backupSuccess = $true
-                $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/flash/config.txt" -FileType "config file")
-                $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/tmp/current_eeprom.conf" -FileType "EEPROM configuration")
-
-                if (-not $backupSuccess) {
-                    $continueResult = [System.Windows.Forms.MessageBox]::Show(
-                        "Failed to create some backups. Do you want to continue anyway?",
-                        "Backup Warning",
-                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                        [System.Windows.Forms.MessageBoxIcon]::Warning
-                    )
-                    if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
-                        Log-Message "Configuration cancelled by user due to backup failure" "WARNING"
-                        Update-Progress -PercentComplete 0 -Status "Ready"
-                        return
-                    }
-                } else {
-                    [System.Windows.Forms.MessageBox]::Show(
-                        "Backups created successfully!`n`nLocation: /storage/ArgonScriptBackup`n`nYou can find your backups there with timestamps for easy identification.",
-                        "Backup Success",
-                        [System.Windows.Forms.MessageBoxButtons]::OK,
-                        [System.Windows.Forms.MessageBoxIcon]::Information
-                    )
-                    Log-Message "Backups created successfully in /storage/ArgonScriptBackup" "SUCCESS"
-                }
             }
         } else {
             Log-Message "User chose to skip backups" "INFO"
@@ -518,22 +513,42 @@ mount -o remount,ro /flash
     }
 }
 
+# Create textboxes first as script-level variables
+$script:ipTextBox = New-Object System.Windows.Forms.TextBox
+$script:userTextBox = New-Object System.Windows.Forms.TextBox
+$script:passTextBox = New-Object System.Windows.Forms.TextBox
+
 # Function to load settings when the program starts
 function Load-SavedSettings {
+    Log-Message "Loading saved settings from $PSScriptRoot" "INFO"
+    
     # Load connection settings first
     if (Test-Path $CONNECTION_FILE) {
         try {
             $connectionSettings = Import-Clixml -Path $CONNECTION_FILE
+            Log-Message "Found connection settings file" "INFO"
             
-            $ipTextBox.Text = $connectionSettings.IP
-            $userTextBox.Text = $connectionSettings.Username
-            $passTextBox.Text = $connectionSettings.Password
+            # Set values using script-level variables
+            if ($connectionSettings.IP) {
+                $script:ipTextBox.Text = $connectionSettings.IP
+                Log-Message "Set IP: $($script:ipTextBox.Text)" "INFO"
+            }
+            if ($connectionSettings.Username) {
+                $script:userTextBox.Text = $connectionSettings.Username
+                Log-Message "Set Username: $($script:userTextBox.Text)" "INFO"
+            }
+            if ($connectionSettings.Password) {
+                $script:passTextBox.Text = $connectionSettings.Password
+                Log-Message "Set Password: ********" "INFO"
+            }
             
-            Log-Message "Connection settings loaded" "INFO"
+            Log-Message "Connection settings loaded successfully" "SUCCESS"
         }
         catch {
             Log-Message "Could not load connection settings - $($_.Exception.Message)" "WARNING"
         }
+    } else {
+        Log-Message "No saved connection settings found at: $CONNECTION_FILE" "INFO"
     }
 
     # Load all settings if they exist
@@ -542,25 +557,27 @@ function Load-SavedSettings {
             $allSettings = Import-Clixml -Path $SETTINGS_FILE
             
             # Connection settings will be overwritten if they exist in both files
-            $ipTextBox.Text = $allSettings.IP
-            $userTextBox.Text = $allSettings.Username
-            $passTextBox.Text = $allSettings.Password
+            $null = $ipTextBox.Text = $allSettings.IP
+            $null = $userTextBox.Text = $allSettings.Username
+            $null = $passTextBox.Text = $allSettings.Password
             
             if ($allSettings.Version -and $versionCombo.Items.Contains($allSettings.Version)) {
-                $versionCombo.SelectedItem = $allSettings.Version
+                $null = $versionCombo.SelectedItem = $allSettings.Version
             }
             
             if ($allSettings.PCIe -and $pcieCombo.Items.Contains($allSettings.PCIe)) {
-                $pcieCombo.SelectedItem = $allSettings.PCIe
+                $null = $pcieCombo.SelectedItem = $allSettings.PCIe
             }
             
-            $dacCheckbox.Checked = $allSettings.DAC
+            $null = $dacCheckbox.Checked = $allSettings.DAC
             
-            Log-Message "All settings loaded successfully" "INFO"
+            Log-Message "All settings loaded successfully" "SUCCESS"
         }
         catch {
             Log-Message "Could not load all settings - $($_.Exception.Message)" "WARNING"
         }
+    } else {
+        Log-Message "No saved settings found" "INFO"
     }
 }
 
@@ -623,7 +640,6 @@ function Ensure-SSHModule {
     return $true
 }
 
-# Now continue with your existing UI code
 # Create the main form
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Argon V3 - LibreELEC Setup"
@@ -632,8 +648,40 @@ $form.StartPosition = "CenterScreen"
 $form.BackColor = [System.Drawing.Color]::White
 $form.MaximumSize = New-Object System.Drawing.Size(1200, $maxHeight)
 $form.MinimumSize = New-Object System.Drawing.Size(800, 500)
-$form.MaximizeBox = $false  # Disable maximize button
-$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle  # Prevent resizing
+$form.MaximizeBox = $false
+$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
+
+# Add Load event to the form
+$form.Add_Load({
+    if (Test-Path $CONNECTION_FILE) {
+        try {
+            $connectionSettings = Import-Clixml -Path $CONNECTION_FILE
+            
+            if ($connectionSettings.IP) {
+                $script:ipTextBox.Text = $connectionSettings.IP
+                Log-Message "Set IP: $($connectionSettings.IP)" "INFO"
+            }
+            if ($connectionSettings.Username) {
+                $script:userTextBox.Text = $connectionSettings.Username
+                Log-Message "Set Username: $($connectionSettings.Username)" "INFO"
+            }
+            if ($connectionSettings.Password) {
+                $script:passTextBox.Text = $connectionSettings.Password
+                Log-Message "Set Password: ********" "INFO"
+            }
+            
+            # Force update
+            $script:ipTextBox.Update()
+            $script:userTextBox.Update()
+            $script:passTextBox.Update()
+            
+            Log-Message "Connection settings loaded in form Load event" "SUCCESS"
+        }
+        catch {
+            Log-Message "Error loading settings in form Load event: $($_.Exception.Message)" "ERROR"
+        }
+    }
+})
 
 # Create main TableLayoutPanel
 $mainLayout = New-Object System.Windows.Forms.TableLayoutPanel
@@ -915,10 +963,16 @@ $footerPanel.Controls.Add($footerLayout)
 $form.Controls.Add($footerPanel)
 
 # Add layouts to form
-$form.Controls.Add($mainLayout)
+$form.Controls.Add($mainLayout) | Out-Null
+$form.Controls.Add($footerPanel) | Out-Null
 
-# Add this line after all your controls are created but before showing the form
-Load-SavedSettings
+# Set default values for combo boxes if not already set
+if ($versionCombo.SelectedIndex -eq -1) {
+    $null = $versionCombo.SelectedIndex = 0
+}
+if ($pcieCombo.SelectedIndex -eq -1) {
+    $null = $pcieCombo.SelectedIndex = 0
+}
 
 # Check for SSH module before showing form
 if (!(Ensure-SSHModule)) {
@@ -927,4 +981,4 @@ if (!(Ensure-SSHModule)) {
 }
 
 # Show the form
-$form.ShowDialog()
+$null = $form.ShowDialog()
