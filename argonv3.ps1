@@ -585,7 +585,8 @@ function Ensure-SSHModule {
                 
                 Log-Message "SSH module not found. Installing Posh-SSH..." "INFO"
                 Install-Module -Name Posh-SSH -Force -Scope CurrentUser
-                Log-Message "SSH module installed successfully" "SUCCESS"
+                Import-Module -Name Posh-SSH -Force
+                Log-Message "SSH module installed and imported successfully" "SUCCESS"
 
                 [System.Windows.Forms.MessageBox]::Show(
                     "Posh-SSH module has been installed successfully!",
@@ -615,6 +616,9 @@ function Ensure-SSHModule {
             )
             return $false
         }
+    } else {
+        # Module exists, make sure it's imported
+        Import-Module -Name Posh-SSH -Force
     }
     return $true
 }
@@ -915,6 +919,12 @@ $form.Controls.Add($mainLayout)
 
 # Add this line after all your controls are created but before showing the form
 Load-SavedSettings
+
+# Check for SSH module before showing form
+if (!(Ensure-SSHModule)) {
+    $form.Close()
+    return
+}
 
 # Show the form
 $form.ShowDialog()
