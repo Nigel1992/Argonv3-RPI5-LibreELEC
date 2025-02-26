@@ -10,12 +10,12 @@ $THEME_TEXT = [System.Drawing.Color]::FromArgb(250, 250, 250)      # Almost Whit
 # Add at the top of your script with other variables
 $SETTINGS_FILE = Join-Path $PSScriptRoot "argon_settings.xml"
 $CONNECTION_FILE = Join-Path $PSScriptRoot "connection_settings.xml"
-$SCRIPT_VERSION = "1.1.0 (03/26/2024)"
+$SCRIPT_VERSION = "1.2.0 (02/26/2024)"
 
 # Get screen working area (accounts for taskbar)
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
 $maxHeight = $screen.Height
-$defaultHeight = 600  # Default form height
+$defaultHeight = 850  # Default form height
 $expandedHeight = 800 # Height when log is shown
 
 # Adjust heights if they exceed screen size
@@ -127,28 +127,203 @@ Need help? Visit the LibreELEC SSH guide online.
     }
 }
 
+function Update-Progress {
+    param(
+        [int]$PercentComplete,
+        [string]$Status
+    )
+    
+    $configProgress.Value = $PercentComplete
+    $progressLabel.Text = "$Status ($PercentComplete%)"
+    
+    # Smooth animation
+    $form.Refresh()
+    Start-Sleep -Milliseconds 50
+}
+
+function Create-Backup {
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$SessionId,
+        [string]$FilePath,
+        [string]$FileType
+    )
+    
+    try {
+        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $fileName = Split-Path $FilePath -Leaf
+        $backupDir = "/storage/ArgonScriptBackup"
+        $backupPath = "$backupDir/$fileName.backup_$timestamp"
+        
+        # Verbose logging for debugging
+        Log-Message "Attempting to backup $FilePath to $backupPath" "INFO"
+        
+        # First check if source file exists
+        $checkSource = Invoke-SSHCommand -SessionId $SessionId -Command "ls -l '$FilePath'"
+        if ($checkSource.ExitStatus -ne 0) {
+            Log-Message "Source file not found: $FilePath" "ERROR"
+            return $false
+        }
+        Log-Message ("Source file check: " + $checkSource.Output) "INFO"
+
+        # Then do the copy
+        $copyCommand = Invoke-SSHCommand -SessionId $SessionId -Command "cp '$FilePath' '$backupPath'"
+        if ($copyCommand.ExitStatus -ne 0) {
+            Log-Message ("Copy failed: " + $copyCommand.Error) "ERROR"
+            return $false
+        }
+
+        # Set permissions if copy succeeded
+        $chmodCommand = Invoke-SSHCommand -SessionId $SessionId -Command "chmod 644 '$backupPath'"
+        if ($chmodCommand.ExitStatus -ne 0) {
+            Log-Message "Warning: Could not set permissions on backup file" "WARNING"
+        }
+
+        # Verify backup exists
+        $verifyBackup = Invoke-SSHCommand -SessionId $SessionId -Command "ls -l '$backupPath'"
+        if ($verifyBackup.ExitStatus -eq 0) {
+            Log-Message "Created backup of $FileType at: $backupPath" "SUCCESS"
+            Log-Message ("Backup file details: " + $verifyBackup.Output) "INFO"
+            return $true
+        } else {
+            Log-Message "Backup file was not created" "ERROR"
+            return $false
+        }
+    }
+    catch {
+        Log-Message ("Error creating backup of " + $FileType + ": " + $_.Exception.Message) "ERROR"
+        return $false
+    }
+}
+
 function Apply-Configuration {
     if (-not (Test-SSHConnection)) {
         return
     }
 
+    # Ask user about backup
+    $backupResult = [System.Windows.Forms.MessageBox]::Show(
+        "Would you like to create backups of your configuration files before making changes?`n`nBackups will be saved in /storage/ArgonScriptBackup with timestamps.",
+        "Create Backup?",
+        [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Question
+    )
+
+    if ($backupResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
+        Log-Message "Configuration cancelled by user" "INFO"
+        return
+    }
+
     try {
-        Log-Message "Checking current configuration..." "INFO"
-        
-        # Create SSH session for multiple commands
+        # Create SSH session
         $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
         $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
         $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey
 
-        # Check if any changes are needed
-        $configChanged = $false
-        $eepromChanged = $false
+        # If user wanted backups, create directory and backups
+        if ($backupResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+            Update-Progress -PercentComplete 5 -Status "Setting up backup directory"
+            Log-Message "Preparing backup location..." "INFO"
+
+            # Create backup directory with verbose output
+            $createDirScript = @'
+#!/bin/sh
+set -x
+if [ ! -d "/storage/ArgonScriptBackup" ]; then
+    mkdir -p "/storage/ArgonScriptBackup"
+    MKDIR_STATUS=$?
+    echo "Directory creation status: $MKDIR_STATUS"
+    
+    chmod 755 "/storage/ArgonScriptBackup"
+    CHMOD_STATUS=$?
+    echo "Chmod status: $CHMOD_STATUS"
+    
+    chown root:root "/storage/ArgonScriptBackup"
+    CHOWN_STATUS=$?
+    echo "Chown status: $CHOWN_STATUS"
+    
+    if [ $MKDIR_STATUS -eq 0 ] && [ $CHMOD_STATUS -eq 0 ] && [ $CHOWN_STATUS -eq 0 ]; then
+        echo "Backup directory created and configured successfully"
+        ls -la "/storage/ArgonScriptBackup"
+        exit 0
+    else
+        echo "Failed to setup backup directory"
+        exit 1
+    fi
+else
+    echo "Backup directory already exists"
+    ls -la "/storage/ArgonScriptBackup"
+    exit 0
+fi
+'@
+
+            $createDirResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $createDirScript
+
+            Log-Message ("Directory creation output: " + $createDirResult.Output) "INFO"
+            Log-Message ("Directory creation error: " + $createDirResult.Error) "INFO"
+
+            if ($createDirResult.ExitStatus -ne 0) {
+                $continueResult = [System.Windows.Forms.MessageBox]::Show(
+                    "Failed to create backup directory. Do you want to continue without backups?",
+                    "Backup Directory Error",
+                    [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                    [System.Windows.Forms.MessageBoxIcon]::Warning
+                )
+                if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
+                    Log-Message "Configuration cancelled due to backup directory creation failure" "WARNING"
+                    Update-Progress -PercentComplete 0 -Status "Ready"
+                    return
+                }
+                Log-Message "Continuing without backups" "WARNING"
+            } else {
+                Update-Progress -PercentComplete 10 -Status "Creating backups"
+                Log-Message "Creating configuration backups..." "INFO"
+
+                # Mount flash directory as writable
+                Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
+
+                # Create backups
+                $backupSuccess = $true
+                $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/flash/config.txt" -FileType "config file")
+                $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/tmp/current_eeprom.conf" -FileType "EEPROM configuration")
+
+                if (-not $backupSuccess) {
+                    $continueResult = [System.Windows.Forms.MessageBox]::Show(
+                        "Failed to create some backups. Do you want to continue anyway?",
+                        "Backup Warning",
+                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                        [System.Windows.Forms.MessageBoxIcon]::Warning
+                    )
+                    if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
+                        Log-Message "Configuration cancelled by user due to backup failure" "WARNING"
+                        Update-Progress -PercentComplete 0 -Status "Ready"
+                        return
+                    }
+                } else {
+                    [System.Windows.Forms.MessageBox]::Show(
+                        "Backups created successfully!`n`nLocation: /storage/ArgonScriptBackup`n`nYou can find your backups there with timestamps for easy identification.",
+                        "Backup Success",
+                        [System.Windows.Forms.MessageBoxButtons]::OK,
+                        [System.Windows.Forms.MessageBoxIcon]::Information
+                    )
+                    Log-Message "Backups created successfully in /storage/ArgonScriptBackup" "SUCCESS"
+                }
+            }
+        } else {
+            Log-Message "User chose to skip backups" "INFO"
+        }
+
+        # Continue with configuration
+        Update-Progress -PercentComplete 20 -Status "Checking current configuration"
+        Log-Message "Checking current configuration..." "INFO"
         
-        # Mount flash directory as writable
+        # Check if any changes are needed
+        Update-Progress -PercentComplete 30 -Status "Mounting system"
         Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
         Log-Message "Checking current settings..." "INFO"
 
         # Common config settings
+        Update-Progress -PercentComplete 40 -Status "Checking config settings"
         $configSettings = @(
             "dtoverlay=gpio-ir,gpio_pin=23",
             "dtparam=i2c=on",
@@ -173,6 +348,7 @@ function Apply-Configuration {
         }
 
         # Check existing config settings
+        Update-Progress -PercentComplete 50 -Status "Verifying current configuration"
         $missingSettings = @()
         foreach ($setting in $configSettings) {
             $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -qF -- `"$setting`" /flash/config.txt"
@@ -185,6 +361,7 @@ function Apply-Configuration {
         }
 
         # Check EEPROM configuration
+        Update-Progress -PercentComplete 60 -Status "Checking EEPROM settings"
         Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config > /tmp/current_eeprom.conf"
         
         # Set EEPROM updates based on version
@@ -214,12 +391,16 @@ function Apply-Configuration {
 
         # If no changes needed, inform user and exit
         if (-not $configChanged -and -not $eepromChanged) {
+            Update-Progress -PercentComplete 100 -Status "Already configured"
+            Log-Message "All required settings are already configured correctly" "SUCCESS"
             [System.Windows.Forms.MessageBox]::Show(
                 "All required settings are already configured correctly. No changes needed.",
                 "Configuration Check",
                 [System.Windows.Forms.MessageBoxButtons]::OK,
                 [System.Windows.Forms.MessageBoxIcon]::Information
             )
+            Start-Sleep -Seconds 3
+            Update-Progress -PercentComplete 0 -Status "Ready"
             return
         }
 
@@ -248,6 +429,7 @@ function Apply-Configuration {
         }
 
         # Apply missing config settings
+        Update-Progress -PercentComplete 70 -Status "Applying configuration changes"
         foreach ($setting in $missingSettings) {
             Invoke-SSHCommand -SessionId $session.SessionId -Command "echo `"$setting`" >> /flash/config.txt"
             Log-Message "Added setting: $setting" "SUCCESS"
@@ -297,8 +479,19 @@ mount -o remount,ro /flash
             Log-Message "Reboot skipped. Please remember to reboot your device later." "WARNING"
         }
         
+        Update-Progress -PercentComplete 100 -Status "Configuration complete"
+        Log-Message "Configuration completed successfully" "SUCCESS"
+        [System.Windows.Forms.MessageBox]::Show(
+            "Configuration has been applied successfully! A reboot is required for changes to take effect.",
+            "Configuration Complete",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        )
+        Start-Sleep -Seconds 3
+        Update-Progress -PercentComplete 0 -Status "Ready"
     }
     catch {
+        Update-Progress -PercentComplete 0 -Status "Configuration failed"
         Log-Message "Failed to apply configuration: $($_.Exception.Message)" "ERROR"
         [System.Windows.Forms.MessageBox]::Show(
             "Failed to apply configuration. Please check the log for details.",
@@ -309,6 +502,8 @@ mount -o remount,ro /flash
     }
     finally {
         if ($session) {
+            # Remount as read-only before closing
+            Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,ro /flash"
             Remove-SSHSession -SessionId $session.SessionId
         }
     }
@@ -490,8 +685,50 @@ $mainLayout.Controls.Add($configGroup, 0, 2)
 $bottomPanel = New-Object System.Windows.Forms.TableLayoutPanel
 $bottomPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
 $bottomPanel.ColumnCount = 1
-$bottomPanel.RowCount = 3  # Added row for Show Log button
+$bottomPanel.RowCount = 4  # Changed to 4 to add progress bar row
 $bottomPanel.Padding = New-Object System.Windows.Forms.Padding(10)
+
+# Progress Panel
+$progressPanel = New-Object System.Windows.Forms.Panel
+$progressPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
+$progressPanel.Height = 40
+$progressPanel.Padding = New-Object System.Windows.Forms.Padding(20, 5, 20, 5)
+
+# Progress Bar Container (for layering)
+$progressContainer = New-Object System.Windows.Forms.Panel
+$progressContainer.Dock = [System.Windows.Forms.DockStyle]::Fill
+$progressContainer.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
+$progressContainer.Padding = New-Object System.Windows.Forms.Padding(0)
+
+# Progress Bar
+$configProgress = New-Object System.Windows.Forms.ProgressBar
+$configProgress.Size = New-Object System.Drawing.Size(700, 25)
+$configProgress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
+$configProgress.Value = 0
+$configProgress.Dock = [System.Windows.Forms.DockStyle]::Fill
+$configProgress.ForeColor = $THEME_PRIMARY
+$configProgress.BackColor = [System.Drawing.Color]::FromArgb(230, 230, 230)
+
+# Progress Label (overlaid on progress bar)
+$progressLabel = New-Object System.Windows.Forms.Label
+$progressLabel.Text = "Ready"
+$progressLabel.BackColor = [System.Drawing.Color]::Transparent
+$progressLabel.ForeColor = [System.Drawing.Color]::White
+$progressLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+$progressLabel.Dock = [System.Windows.Forms.DockStyle]::Fill
+$progressLabel.UseCompatibleTextRendering = $true
+
+# Add controls to container
+$progressContainer.Controls.Add($configProgress)
+$progressContainer.Controls.Add($progressLabel)
+$progressPanel.Controls.Add($progressContainer)
+
+# Set row styles
+$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 50))) # Apply button
+$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Show Log button
+$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Progress bar
+$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100))) # Log
 
 # Apply Button Panel
 $applyButtonPanel = New-Object System.Windows.Forms.Panel
@@ -544,12 +781,8 @@ $logBox.Visible = $false
 # Add controls to bottom panel
 $bottomPanel.Controls.Add($applyButtonPanel, 0, 0)
 $bottomPanel.Controls.Add($showLogButtonPanel, 0, 1)
-$bottomPanel.Controls.Add($logBox, 0, 2)
-
-# Set row styles
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 50)))
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40)))
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+$bottomPanel.Controls.Add($progressPanel, 0, 2)
+$bottomPanel.Controls.Add($logBox, 0, 3)
 
 # Toggle log visibility
 $showLogButton.Add_Click({
