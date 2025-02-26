@@ -210,253 +210,8 @@ function Apply-Configuration {
         return
     }
 
-    # Ask user about backup
-    $backupResult = [System.Windows.Forms.MessageBox]::Show(
-        "Would you like to create backups of your configuration files before making changes?`n`nBackups will be saved in /storage/ArgonScriptBackup with timestamps.",
-        "Create Backup?",
-        [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
-        [System.Windows.Forms.MessageBoxIcon]::Question
-    )
-
-    if ($backupResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
-        Log-Message "Configuration cancelled by user" "INFO"
-        return
-    }
-
     try {
-        # Create SSH session
-        $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
-        $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
-        $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey
-
-        # If user wanted backups, create directory and backups
-        if ($backupResult -eq [System.Windows.Forms.DialogResult]::Yes) {
-            Update-Progress -PercentComplete 5 -Status "Setting up backup directory"
-            Log-Message "Preparing backup location..." "INFO"
-
-            # Create backup directory with verbose output
-            $createDirScript = 'ls -la /storage/ && mkdir -p /storage/ArgonScriptBackup && ls -la /storage/ArgonScriptBackup'
-
-            $createDirResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $createDirScript
-
-            Log-Message "Storage directory contents: " "INFO"
-            Log-Message $createDirResult.Output "INFO"
-
-            if ($createDirResult.ExitStatus -eq 0) {
-                Log-Message "Backup directory created successfully" "SUCCESS"
-                
-                # Set permissions separately
-                $permissionScript = 'chmod 755 /storage/ArgonScriptBackup && chown root:root /storage/ArgonScriptBackup'
-                $permissionResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $permissionScript
-                
-                if ($permissionResult.ExitStatus -eq 0) {
-                    Log-Message "Permissions set successfully" "SUCCESS"
-                    Update-Progress -PercentComplete 10 -Status "Creating backups"
-                    Log-Message "Creating configuration backups..." "INFO"
-
-                    # Mount flash directory as writable
-                    Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
-
-                    # Create backups
-                    $backupSuccess = $true
-                    $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/flash/config.txt" -FileType "config file")
-                    $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/tmp/current_eeprom.conf" -FileType "EEPROM configuration")
-
-                    if (-not $backupSuccess) {
-                        $continueResult = [System.Windows.Forms.MessageBox]::Show(
-                            "Failed to create some backups. Do you want to continue anyway?",
-                            "Backup Warning",
-                            [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                            [System.Windows.Forms.MessageBoxIcon]::Warning
-                        )
-                        if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
-                            Log-Message "Configuration cancelled by user due to backup failure" "WARNING"
-                            Update-Progress -PercentComplete 0 -Status "Ready"
-                            return
-                        }
-                    } else {
-                        [System.Windows.Forms.MessageBox]::Show(
-                            "Backups created successfully!`n`nLocation: /storage/ArgonScriptBackup`n`nYou can find your backups there with timestamps for easy identification.",
-                            "Backup Success",
-                            [System.Windows.Forms.MessageBoxButtons]::OK,
-                            [System.Windows.Forms.MessageBoxIcon]::Information
-                        )
-                        Log-Message "Backups created successfully in /storage/ArgonScriptBackup" "SUCCESS"
-                    }
-                } else {
-                    Log-Message "Warning: Could not set permissions - $($permissionResult.Error)" "WARNING"
-                    $continueResult = [System.Windows.Forms.MessageBox]::Show(
-                        "Failed to set permissions on backup directory. Do you want to continue without backups?",
-                        "Backup Directory Error",
-                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                        [System.Windows.Forms.MessageBoxIcon]::Warning
-                    )
-                    if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
-                        Log-Message "Configuration cancelled due to backup directory permission failure" "WARNING"
-                        Update-Progress -PercentComplete 0 -Status "Ready"
-                        return
-                    }
-                    Log-Message "Continuing without backups" "WARNING"
-                }
-            } else {
-                Log-Message "Failed to create backup directory - $($createDirResult.Error)" "ERROR"
-                $continueResult = [System.Windows.Forms.MessageBox]::Show(
-                    "Failed to create backup directory. Do you want to continue without backups?",
-                    "Backup Directory Error",
-                    [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                    [System.Windows.Forms.MessageBoxIcon]::Warning
-                )
-                if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
-                    Log-Message "Configuration cancelled due to backup directory creation failure" "WARNING"
-                    Update-Progress -PercentComplete 0 -Status "Ready"
-                    return
-                }
-                Log-Message "Continuing without backups" "WARNING"
-            }
-        } else {
-            Log-Message "User chose to skip backups" "INFO"
-        }
-
-        # Continue with configuration
-        Update-Progress -PercentComplete 20 -Status "Checking current configuration"
-        Log-Message "Checking current configuration..." "INFO"
-        
-        # Check if any changes are needed
-        Update-Progress -PercentComplete 30 -Status "Mounting system"
-        Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
-        Log-Message "Checking current settings..." "INFO"
-
-        # Common config settings
-        Update-Progress -PercentComplete 40 -Status "Checking config settings"
-        $configSettings = @(
-            "dtoverlay=gpio-ir,gpio_pin=23",
-            "dtparam=i2c=on",
-            "enable_uart=1",
-            "usb_max_current_enable=1"
-        )
-
-        # Add NVMe settings if applicable
-        if ($versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
-            $pcieGen = switch ($pcieCombo.SelectedItem) {
-                "Gen 1" { "gen1" }
-                "Gen 2" { "gen2" }
-                "Gen 3" { "gen3" }
-            }
-            $configSettings += "dtparam=nvme"
-            $configSettings += "dtparam=pciex1_1=$pcieGen"
-        }
-
-        # Add DAC settings if applicable
-        if ($dacCheckbox.Checked) {
-            $configSettings += "dtoverlay=hifiberry-dacplus,slave"
-        }
-
-        # Check existing config settings
-        Update-Progress -PercentComplete 50 -Status "Verifying current configuration"
-        $missingSettings = @()
-        foreach ($setting in $configSettings) {
-            $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -qF -- `"$setting`" /flash/config.txt"
-            if ($checkResult.ExitStatus -ne 0) {
-                $missingSettings += $setting
-                $configChanged = $true
-            } else {
-                Log-Message "Setting already exists: $setting" "INFO"
-            }
-        }
-
-        # Check EEPROM configuration
-        Update-Progress -PercentComplete 60 -Status "Checking EEPROM settings"
-        Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config > /tmp/current_eeprom.conf"
-        
-        # Set EEPROM updates based on version
-        $missingEepromUpdates = @()
-        $eepromUpdates = if ($versionCombo.SelectedItem -eq "Argon V3 Normal") {
-            @("PSU_MAX_CURRENT=5000")
-        } else {
-            @(
-                "BOOT_ORDER=0xf416",
-                "PCIE_PROBE=1",
-                "PSU_MAX_CURRENT=5000"
-            )
-        }
-
-        # Check existing EEPROM settings
-        foreach ($update in $eepromUpdates) {
-            $setting = $update.Split('=')[0]
-            $value = $update.Split('=')[1]
-            $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -w `"^$setting`" /tmp/current_eeprom.conf"
-            if ($checkResult.Output -ne $update) {
-                $missingEepromUpdates += $update
-                $eepromChanged = $true
-            } else {
-                Log-Message "EEPROM setting already exists: $update" "INFO"
-            }
-        }
-
-        # If no changes needed, inform user and exit
-        if (-not $configChanged -and -not $eepromChanged) {
-            Update-Progress -PercentComplete 100 -Status "Already configured"
-            Log-Message "All required settings are already configured correctly" "SUCCESS"
-            [System.Windows.Forms.MessageBox]::Show(
-                "All required settings are already configured correctly. No changes needed.",
-                "Configuration Check",
-                [System.Windows.Forms.MessageBoxButtons]::OK,
-                [System.Windows.Forms.MessageBoxIcon]::Information
-            )
-            Start-Sleep -Seconds 3
-            Update-Progress -PercentComplete 0 -Status "Ready"
-            return
-        }
-
-        # Show summary and ask for confirmation
-        $summary = "The following changes will be made:`n`n"
-        if ($missingSettings.Count -gt 0) {
-            $summary += "Config.txt additions:`n"
-            $summary += $missingSettings -join "`n"
-            $summary += "`n`n"
-        }
-        if ($missingEepromUpdates.Count -gt 0) {
-            $summary += "EEPROM updates:`n"
-            $summary += $missingEepromUpdates -join "`n"
-        }
-        
-        $result = [System.Windows.Forms.MessageBox]::Show(
-            "$summary`n`nDo you want to apply these changes?",
-            "Confirm Changes",
-            [System.Windows.Forms.MessageBoxButtons]::YesNo,
-            [System.Windows.Forms.MessageBoxIcon]::Question
-        )
-
-        if ($result -eq [System.Windows.Forms.DialogResult]::No) {
-            Log-Message "Configuration cancelled by user" "INFO"
-            return
-        }
-
-        # Apply missing config settings
-        Update-Progress -PercentComplete 70 -Status "Applying configuration changes"
-        foreach ($setting in $missingSettings) {
-            Invoke-SSHCommand -SessionId $session.SessionId -Command "echo `"$setting`" >> /flash/config.txt"
-            Log-Message "Added setting: $setting" "SUCCESS"
-        }
-
-        # Apply missing EEPROM updates
-        if ($missingEepromUpdates.Count -gt 0) {
-            $eepromScript = $missingEepromUpdates -join "`n"
-            Invoke-SSHCommand -SessionId $session.SessionId -Command @"
-echo '$eepromScript' > /tmp/boot.conf
-rpi-eeprom-config -a /tmp/boot.conf
-rm /tmp/boot.conf
-"@
-            Log-Message "Updated EEPROM settings" "SUCCESS"
-        }
-
-        # Cleanup
-        Invoke-SSHCommand -SessionId $session.SessionId -Command @"
-rm /tmp/current_eeprom.conf
-mount -o remount,ro /flash
-"@
-
-        # Save all settings
+        # Always save all settings first
         $allSettings = @{
             IP = $ipTextBox.Text
             Username = $userTextBox.Text
@@ -466,43 +221,290 @@ mount -o remount,ro /flash
             DAC = $dacCheckbox.Checked
         }
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
-        Log-Message "All settings saved successfully" "SUCCESS"
+        Log-Message "Settings saved to $SETTINGS_FILE" "SUCCESS"
 
-        # Ask for reboot only if changes were made
-        $rebootResult = [System.Windows.Forms.MessageBox]::Show(
-            "Configuration has been applied successfully! A reboot is required for changes to take effect. Would you like to reboot now?",
-            "Configuration Complete",
-            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+        # Create SSH session
+        $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
+        $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey
+
+        # Ask user about backup
+        $backupResult = [System.Windows.Forms.MessageBox]::Show(
+            "Would you like to create backups of your configuration files before making changes?`n`nBackups will be saved in /storage/ArgonScriptBackup with timestamps.",
+            "Create Backup?",
+            [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
             [System.Windows.Forms.MessageBoxIcon]::Question
         )
 
-        if ($rebootResult -eq [System.Windows.Forms.DialogResult]::Yes) {
-            Log-Message "Rebooting device..." "INFO"
-            Invoke-SSHCommand -SessionId $session.SessionId -Command "reboot"
-        } else {
-            Log-Message "Reboot skipped. Please remember to reboot your device later." "WARNING"
+        if ($backupResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
+            Log-Message "Configuration cancelled by user" "INFO"
+            return
         }
-        
-        Update-Progress -PercentComplete 100 -Status "Configuration complete"
-        Log-Message "Configuration completed successfully" "SUCCESS"
-        [System.Windows.Forms.MessageBox]::Show(
-            "Configuration has been applied successfully! A reboot is required for changes to take effect.",
-            "Configuration Complete",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Information
-        )
-        Start-Sleep -Seconds 3
-        Update-Progress -PercentComplete 0 -Status "Ready"
-    }
-    catch {
-        Update-Progress -PercentComplete 0 -Status "Configuration failed"
-        Log-Message "Failed to apply configuration: $($_.Exception.Message)" "ERROR"
-        [System.Windows.Forms.MessageBox]::Show(
-            "Failed to apply configuration. Please check the log for details.",
-            "Error",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Error
-        )
+
+        try {
+            # If user wanted backups, create directory and backups
+            if ($backupResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+                Update-Progress -PercentComplete 5 -Status "Setting up backup directory"
+                Log-Message "Preparing backup location..." "INFO"
+
+                # Create backup directory with verbose output
+                $createDirScript = 'ls -la /storage/ && mkdir -p /storage/ArgonScriptBackup && ls -la /storage/ArgonScriptBackup'
+
+                $createDirResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $createDirScript
+
+                Log-Message "Storage directory contents: " "INFO"
+                Log-Message $createDirResult.Output "INFO"
+
+                if ($createDirResult.ExitStatus -eq 0) {
+                    Log-Message "Backup directory created successfully" "SUCCESS"
+                    
+                    # Set permissions separately
+                    $permissionScript = 'chmod 755 /storage/ArgonScriptBackup && chown root:root /storage/ArgonScriptBackup'
+                    $permissionResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $permissionScript
+                    
+                    if ($permissionResult.ExitStatus -eq 0) {
+                        Log-Message "Permissions set successfully" "SUCCESS"
+                        Update-Progress -PercentComplete 10 -Status "Creating backups"
+                        Log-Message "Creating configuration backups..." "INFO"
+
+                        # Mount flash directory as writable
+                        Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
+
+                        # Create backups
+                        $backupSuccess = $true
+                        $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/flash/config.txt" -FileType "config file")
+                        $backupSuccess = $backupSuccess -and (Create-Backup -SessionId $session.SessionId -FilePath "/tmp/current_eeprom.conf" -FileType "EEPROM configuration")
+
+                        if (-not $backupSuccess) {
+                            $continueResult = [System.Windows.Forms.MessageBox]::Show(
+                                "Failed to create some backups. Do you want to continue anyway?",
+                                "Backup Warning",
+                                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                                [System.Windows.Forms.MessageBoxIcon]::Warning
+                            )
+                            if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
+                                Log-Message "Configuration cancelled by user due to backup failure" "WARNING"
+                                Update-Progress -PercentComplete 0 -Status "Ready"
+                                return
+                            }
+                        } else {
+                            [System.Windows.Forms.MessageBox]::Show(
+                                "Backups created successfully!`n`nLocation: /storage/ArgonScriptBackup`n`nYou can find your backups there with timestamps for easy identification.",
+                                "Backup Success",
+                                [System.Windows.Forms.MessageBoxButtons]::OK,
+                                [System.Windows.Forms.MessageBoxIcon]::Information
+                            )
+                            Log-Message "Backups created successfully in /storage/ArgonScriptBackup" "SUCCESS"
+                        }
+                    } else {
+                        Log-Message "Warning: Could not set permissions - $($permissionResult.Error)" "WARNING"
+                        $continueResult = [System.Windows.Forms.MessageBox]::Show(
+                            "Failed to set permissions on backup directory. Do you want to continue without backups?",
+                            "Backup Directory Error",
+                            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                            [System.Windows.Forms.MessageBoxIcon]::Warning
+                        )
+                        if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
+                            Log-Message "Configuration cancelled due to backup directory permission failure" "WARNING"
+                            Update-Progress -PercentComplete 0 -Status "Ready"
+                            return
+                        }
+                        Log-Message "Continuing without backups" "WARNING"
+                    }
+                } else {
+                    Log-Message "Failed to create backup directory - $($createDirResult.Error)" "ERROR"
+                    $continueResult = [System.Windows.Forms.MessageBox]::Show(
+                        "Failed to create backup directory. Do you want to continue without backups?",
+                        "Backup Directory Error",
+                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                        [System.Windows.Forms.MessageBoxIcon]::Warning
+                    )
+                    if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
+                        Log-Message "Configuration cancelled due to backup directory creation failure" "WARNING"
+                        Update-Progress -PercentComplete 0 -Status "Ready"
+                        return
+                    }
+                    Log-Message "Continuing without backups" "WARNING"
+                }
+            } else {
+                Log-Message "User chose to skip backups" "INFO"
+            }
+
+            # Continue with configuration
+            Update-Progress -PercentComplete 20 -Status "Checking current configuration"
+            Log-Message "Checking current configuration..." "INFO"
+            
+            # Check if any changes are needed
+            Update-Progress -PercentComplete 30 -Status "Mounting system"
+            Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,rw /flash"
+            Log-Message "Checking current settings..." "INFO"
+
+            # Common config settings
+            Update-Progress -PercentComplete 40 -Status "Checking config settings"
+            $configSettings = @(
+                "dtoverlay=gpio-ir,gpio_pin=23",
+                "dtparam=i2c=on",
+                "enable_uart=1",
+                "usb_max_current_enable=1"
+            )
+
+            # Add NVMe settings if applicable
+            if ($versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
+                $pcieGen = switch ($pcieCombo.SelectedItem) {
+                    "Gen 1" { "gen1" }
+                    "Gen 2" { "gen2" }
+                    "Gen 3" { "gen3" }
+                }
+                $configSettings += "dtparam=nvme"
+                $configSettings += "dtparam=pciex1_1=$pcieGen"
+            }
+
+            # Add DAC settings if applicable
+            if ($dacCheckbox.Checked) {
+                $configSettings += "dtoverlay=hifiberry-dacplus,slave"
+            }
+
+            # Check existing config settings
+            Update-Progress -PercentComplete 50 -Status "Verifying current configuration"
+            $missingSettings = @()
+            foreach ($setting in $configSettings) {
+                $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -qF -- `"$setting`" /flash/config.txt"
+                if ($checkResult.ExitStatus -ne 0) {
+                    $missingSettings += $setting
+                    $configChanged = $true
+                } else {
+                    Log-Message "Setting already exists: $setting" "INFO"
+                }
+            }
+
+            # Check EEPROM configuration
+            Update-Progress -PercentComplete 60 -Status "Checking EEPROM settings"
+            Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config > /tmp/current_eeprom.conf"
+            
+            # Set EEPROM updates based on version
+            $missingEepromUpdates = @()
+            $eepromUpdates = if ($versionCombo.SelectedItem -eq "Argon V3 Normal") {
+                @("PSU_MAX_CURRENT=5000")
+            } else {
+                @(
+                    "BOOT_ORDER=0xf416",
+                    "PCIE_PROBE=1",
+                    "PSU_MAX_CURRENT=5000"
+                )
+            }
+
+            # Check existing EEPROM settings
+            foreach ($update in $eepromUpdates) {
+                $setting = $update.Split('=')[0]
+                $value = $update.Split('=')[1]
+                $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -w `"^$setting`" /tmp/current_eeprom.conf"
+                if ($checkResult.Output -ne $update) {
+                    $missingEepromUpdates += $update
+                    $eepromChanged = $true
+                } else {
+                    Log-Message "EEPROM setting already exists: $update" "INFO"
+                }
+            }
+
+            # If no changes needed, inform user (but settings were still saved)
+            if (-not $configChanged -and -not $eepromChanged) {
+                Update-Progress -PercentComplete 100 -Status "Settings saved"
+                Log-Message "All required settings are already configured correctly" "SUCCESS"
+                [System.Windows.Forms.MessageBox]::Show(
+                    "All required settings are already configured correctly. No changes needed.`n`nYour settings have been saved locally.",
+                    "Configuration Check",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Information
+                )
+                Start-Sleep -Seconds 3
+                Update-Progress -PercentComplete 0 -Status "Ready"
+                return
+            }
+
+            # Show summary and ask for confirmation
+            $summary = "The following changes will be made:`n`n"
+            if ($missingSettings.Count -gt 0) {
+                $summary += "Config.txt additions:`n"
+                $summary += $missingSettings -join "`n"
+                $summary += "`n`n"
+            }
+            if ($missingEepromUpdates.Count -gt 0) {
+                $summary += "EEPROM updates:`n"
+                $summary += $missingEepromUpdates -join "`n"
+            }
+            
+            $result = [System.Windows.Forms.MessageBox]::Show(
+                "$summary`n`nDo you want to apply these changes?",
+                "Confirm Changes",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Question
+            )
+
+            if ($result -eq [System.Windows.Forms.DialogResult]::No) {
+                Log-Message "Configuration cancelled by user" "INFO"
+                return
+            }
+
+            # Apply missing config settings
+            Update-Progress -PercentComplete 70 -Status "Applying configuration changes"
+            foreach ($setting in $missingSettings) {
+                Invoke-SSHCommand -SessionId $session.SessionId -Command "echo `"$setting`" >> /flash/config.txt"
+                Log-Message "Added setting: $setting" "SUCCESS"
+            }
+
+            # Apply missing EEPROM updates
+            if ($missingEepromUpdates.Count -gt 0) {
+                $eepromScript = $missingEepromUpdates -join "`n"
+                Invoke-SSHCommand -SessionId $session.SessionId -Command @"
+echo '$eepromScript' > /tmp/boot.conf
+rpi-eeprom-config -a /tmp/boot.conf
+rm /tmp/boot.conf
+"@
+                Log-Message "Updated EEPROM settings" "SUCCESS"
+            }
+
+            # Cleanup
+            Invoke-SSHCommand -SessionId $session.SessionId -Command @"
+rm /tmp/current_eeprom.conf
+mount -o remount,ro /flash
+"@
+
+            # Ask for reboot only if changes were made
+            $rebootResult = [System.Windows.Forms.MessageBox]::Show(
+                "Configuration has been applied successfully! A reboot is required for changes to take effect. Would you like to reboot now?",
+                "Configuration Complete",
+                [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                [System.Windows.Forms.MessageBoxIcon]::Question
+            )
+
+            if ($rebootResult -eq [System.Windows.Forms.DialogResult]::Yes) {
+                Log-Message "Rebooting device..." "INFO"
+                Invoke-SSHCommand -SessionId $session.SessionId -Command "reboot"
+            } else {
+                Log-Message "Reboot skipped. Please remember to reboot your device later." "WARNING"
+            }
+            
+            Update-Progress -PercentComplete 100 -Status "Configuration complete"
+            Log-Message "Configuration completed successfully" "SUCCESS"
+            [System.Windows.Forms.MessageBox]::Show(
+                "Configuration has been applied successfully! A reboot is required for changes to take effect.",
+                "Configuration Complete",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Information
+            )
+            Start-Sleep -Seconds 3
+            Update-Progress -PercentComplete 0 -Status "Ready"
+        }
+        catch {
+            Update-Progress -PercentComplete 0 -Status "Configuration failed"
+            Log-Message "Failed to apply configuration: $($_.Exception.Message)" "ERROR"
+            [System.Windows.Forms.MessageBox]::Show(
+                "Failed to apply configuration. Please check the log for details.",
+                "Error",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+        }
     }
     finally {
         if ($session) {
@@ -520,65 +522,65 @@ $script:passTextBox = New-Object System.Windows.Forms.TextBox
 
 # Function to load settings when the program starts
 function Load-SavedSettings {
-    Log-Message "Loading saved settings from $PSScriptRoot" "INFO"
+    Log-Message "Starting to load saved settings from Documents folder" "INFO"
     
-    # Load connection settings first
-    if (Test-Path $CONNECTION_FILE) {
-        try {
-            $connectionSettings = Import-Clixml -Path $CONNECTION_FILE
-            Log-Message "Found connection settings file" "INFO"
-            
-            # Set values using script-level variables
-            if ($connectionSettings.IP) {
-                $script:ipTextBox.Text = $connectionSettings.IP
-                Log-Message "Set IP: $($script:ipTextBox.Text)" "INFO"
-            }
-            if ($connectionSettings.Username) {
-                $script:userTextBox.Text = $connectionSettings.Username
-                Log-Message "Set Username: $($script:userTextBox.Text)" "INFO"
-            }
-            if ($connectionSettings.Password) {
-                $script:passTextBox.Text = $connectionSettings.Password
-                Log-Message "Set Password: ********" "INFO"
-            }
-            
-            Log-Message "Connection settings loaded successfully" "SUCCESS"
-        }
-        catch {
-            Log-Message "Could not load connection settings - $($_.Exception.Message)" "WARNING"
-        }
-    } else {
-        Log-Message "No saved connection settings found at: $CONNECTION_FILE" "INFO"
+    # Ensure settings directory exists
+    if (-not (Test-Path $PSScriptRoot)) {
+        New-Item -ItemType Directory -Force -Path $PSScriptRoot
+        Log-Message "Created settings directory: $PSScriptRoot" "INFO"
     }
-
-    # Load all settings if they exist
+    
+    # Load settings from Documents
     if (Test-Path $SETTINGS_FILE) {
         try {
             $allSettings = Import-Clixml -Path $SETTINGS_FILE
+            Log-Message "Found settings file: $SETTINGS_FILE" "INFO"
             
-            # Connection settings will be overwritten if they exist in both files
-            $null = $ipTextBox.Text = $allSettings.IP
-            $null = $userTextBox.Text = $allSettings.Username
-            $null = $passTextBox.Text = $allSettings.Password
-            
-            if ($allSettings.Version -and $versionCombo.Items.Contains($allSettings.Version)) {
-                $null = $versionCombo.SelectedItem = $allSettings.Version
+            # Set connection settings
+            if ($allSettings.IP) { 
+                $ipTextBox.Text = $allSettings.IP 
+                Log-Message "Loaded IP: $($allSettings.IP)" "INFO"
+            }
+            if ($allSettings.Username) { 
+                $userTextBox.Text = $allSettings.Username 
+                Log-Message "Loaded Username: $($allSettings.Username)" "INFO"
+            }
+            if ($allSettings.Password) { 
+                $passTextBox.Text = $allSettings.Password 
+                Log-Message "Loaded Password: ********" "INFO"
             }
             
-            if ($allSettings.PCIe -and $pcieCombo.Items.Contains($allSettings.PCIe)) {
-                $null = $pcieCombo.SelectedItem = $allSettings.PCIe
+            # Set Argon settings
+            if ($allSettings.Version) {
+                $versionCombo.SelectedItem = $allSettings.Version
+                Log-Message "Loaded Version: $($allSettings.Version)" "INFO"
+            }
+            if ($allSettings.PCIe) {
+                $pcieCombo.SelectedItem = $allSettings.PCIe
+                Log-Message "Loaded PCIe: $($allSettings.PCIe)" "INFO"
+            }
+            if ($null -ne $allSettings.DAC) {
+                $dacCheckbox.Checked = $allSettings.DAC
+                Log-Message "Loaded DAC setting: $($allSettings.DAC)" "INFO"
             }
             
-            $null = $dacCheckbox.Checked = $allSettings.DAC
-            
-            Log-Message "All settings loaded successfully" "SUCCESS"
+            Log-Message "Successfully loaded all settings from Documents" "SUCCESS"
         }
         catch {
-            Log-Message "Could not load all settings - $($_.Exception.Message)" "WARNING"
+            Log-Message "Error loading settings from Documents: $($_.Exception.Message)" "ERROR"
         }
     } else {
-        Log-Message "No saved settings found" "INFO"
+        Log-Message "No settings file found in Documents. Using defaults." "INFO"
+        # Set defaults if no settings file exists
+        $userTextBox.Text = "root"
+        $passTextBox.Text = "libreelec"
+        $versionCombo.SelectedIndex = 0
+        $pcieCombo.SelectedIndex = 0
+        $dacCheckbox.Checked = $false
     }
+
+    # Force UI update
+    $form.Update()
 }
 
 # Check for SSH module and install if missing
@@ -651,36 +653,74 @@ $form.MinimumSize = New-Object System.Drawing.Size(800, 500)
 $form.MaximizeBox = $false
 $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 
-# Add Load event to the form
-$form.Add_Load({
-    if (Test-Path $CONNECTION_FILE) {
+# Function to load settings when the program starts
+function Load-SavedSettings {
+    Log-Message "Starting to load saved settings from Documents folder" "INFO"
+    
+    # Ensure settings directory exists
+    if (-not (Test-Path $PSScriptRoot)) {
+        New-Item -ItemType Directory -Force -Path $PSScriptRoot
+        Log-Message "Created settings directory: $PSScriptRoot" "INFO"
+    }
+    
+    # Load settings from Documents
+    if (Test-Path $SETTINGS_FILE) {
         try {
-            $connectionSettings = Import-Clixml -Path $CONNECTION_FILE
+            $allSettings = Import-Clixml -Path $SETTINGS_FILE
+            Log-Message "Found settings file: $SETTINGS_FILE" "INFO"
             
-            if ($connectionSettings.IP) {
-                $script:ipTextBox.Text = $connectionSettings.IP
-                Log-Message "Set IP: $($connectionSettings.IP)" "INFO"
+            # Set connection settings
+            if ($allSettings.IP) { 
+                $ipTextBox.Text = $allSettings.IP 
+                Log-Message "Loaded IP: $($allSettings.IP)" "INFO"
             }
-            if ($connectionSettings.Username) {
-                $script:userTextBox.Text = $connectionSettings.Username
-                Log-Message "Set Username: $($connectionSettings.Username)" "INFO"
+            if ($allSettings.Username) { 
+                $userTextBox.Text = $allSettings.Username 
+                Log-Message "Loaded Username: $($allSettings.Username)" "INFO"
             }
-            if ($connectionSettings.Password) {
-                $script:passTextBox.Text = $connectionSettings.Password
-                Log-Message "Set Password: ********" "INFO"
+            if ($allSettings.Password) { 
+                $passTextBox.Text = $allSettings.Password 
+                Log-Message "Loaded Password: ********" "INFO"
             }
             
-            # Force update
-            $script:ipTextBox.Update()
-            $script:userTextBox.Update()
-            $script:passTextBox.Update()
+            # Set Argon settings
+            if ($allSettings.Version) {
+                $versionCombo.SelectedItem = $allSettings.Version
+                Log-Message "Loaded Version: $($allSettings.Version)" "INFO"
+            }
+            if ($allSettings.PCIe) {
+                $pcieCombo.SelectedItem = $allSettings.PCIe
+                Log-Message "Loaded PCIe: $($allSettings.PCIe)" "INFO"
+            }
+            if ($null -ne $allSettings.DAC) {
+                $dacCheckbox.Checked = $allSettings.DAC
+                Log-Message "Loaded DAC setting: $($allSettings.DAC)" "INFO"
+            }
             
-            Log-Message "Connection settings loaded in form Load event" "SUCCESS"
+            Log-Message "Successfully loaded all settings from Documents" "SUCCESS"
         }
         catch {
-            Log-Message "Error loading settings in form Load event: $($_.Exception.Message)" "ERROR"
+            Log-Message "Error loading settings from Documents: $($_.Exception.Message)" "ERROR"
         }
+    } else {
+        Log-Message "No settings file found in Documents. Using defaults." "INFO"
+        # Set defaults if no settings file exists
+        $userTextBox.Text = "root"
+        $passTextBox.Text = "libreelec"
+        $versionCombo.SelectedIndex = 0
+        $pcieCombo.SelectedIndex = 0
+        $dacCheckbox.Checked = $false
     }
+
+    # Force UI update
+    $form.Update()
+}
+
+# Add form load event to load settings
+$form.Add_Shown({
+    Log-Message "Form shown, loading settings from Documents..." "INFO"
+    Load-SavedSettings
+    Log-Message "Settings load complete" "INFO"
 })
 
 # Create main TableLayoutPanel
@@ -965,14 +1005,6 @@ $form.Controls.Add($footerPanel)
 # Add layouts to form
 $form.Controls.Add($mainLayout) | Out-Null
 $form.Controls.Add($footerPanel) | Out-Null
-
-# Set default values for combo boxes if not already set
-if ($versionCombo.SelectedIndex -eq -1) {
-    $null = $versionCombo.SelectedIndex = 0
-}
-if ($pcieCombo.SelectedIndex -eq -1) {
-    $null = $pcieCombo.SelectedIndex = 0
-}
 
 # Check for SSH module before showing form
 if (!(Ensure-SSHModule)) {
