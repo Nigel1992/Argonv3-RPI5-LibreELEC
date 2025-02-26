@@ -8,6 +8,9 @@
 
 This PowerShell script provides an easy-to-use GUI for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. It automates the setup process and ensures all necessary configurations are properly applied.
 
+![{542364D6-3A6B-4566-AE42-AF49EDDE424D}](https://github.com/user-attachments/assets/981f7a07-6a35-4f7b-826b-a9ea281b8ed4)
+
+
 ## 🚀 Quick Start
 
 Run directly from PowerShell (Administrator):
