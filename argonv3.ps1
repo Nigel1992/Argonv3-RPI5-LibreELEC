@@ -19,7 +19,7 @@ $null = New-Item -ItemType Directory -Force -Path $PSScriptRoot
 # Set file paths
 $SETTINGS_FILE = Join-Path $PSScriptRoot "argon_settings.xml"
 $CONNECTION_FILE = Join-Path $PSScriptRoot "connection_settings.xml"
-$SCRIPT_VERSION = "1.2.0 (02/26/2024)"
+$SCRIPT_VERSION = "1.2.1 (02/26/2024)"
 
 # Get screen working area (accounts for taskbar)
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
