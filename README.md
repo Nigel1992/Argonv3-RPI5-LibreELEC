@@ -1,27 +1,67 @@
-# Argon V3 LibreELEC Setup Tool
+# 🛠️ Argon ONE V3 Setup Script for LibreELEC on Raspberry Pi 5
 
-A PowerShell-based configuration tool for Argon V3 cases running LibreELEC on Raspberry Pi 5.
+![Version](https://img.shields.io/badge/version-1.2.1-blue)
+![Platform](https://img.shields.io/badge/platform-LibreELEC-green)
+![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)
 
-## Version 1.2.2 (March 7, 2025)
+## 📝 Description
 
-### New Features & Improvements
-- Added "Test Current Settings" functionality with HTML report generation
-- Improved settings display with a clean, modern HTML layout
-- Implemented per-session log files with timestamps
-- Added "Show Log" button to view current session's log file
-- Reduced progress bar size for a cleaner interface
-- Enhanced error handling and user feedback
+This PowerShell script provides an easy-to-use GUI for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. It automates the setup process and ensures all necessary configurations are properly applied.
 
-### Technical Changes
-- Log files are now stored in `Documents\ArgonSetup\logs` with timestamps
-- Configuration test results are displayed in a formatted HTML page
-- Progress bar height reduced to 12 pixels for better aesthetics
-- Improved theme handling for both light and dark modes
+![{77D0D9BC-2A71-40FB-B5BA-894F4F25D521}](https://github.com/user-attachments/assets/d48aabef-6a30-4fe0-af09-c5bc42199b40)
 
-## Requirements
-- Windows 10/11
-- PowerShell 5.1 or later
-- Posh-SSH module (automatically installed if missing)
+
+## 🚀 Quick Start
+
+Run directly from PowerShell (Administrator):
+```powershell
+# First, allow remote script execution (only needed once)
+Set-ExecutionPolicy Unrestricted -Force
+
+# Then run the script
+irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
+```
+
+Or for a more secure approach, you can use:
+```powershell
+# Allow remote signed scripts (recommended, only needed once)
+Set-ExecutionPolicy RemoteSigned -Force
+
+# Then run the script
+irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
+```
+
+Alternatively, download and run manually (you'll need to do this every time the script gets an update, so not recommended):
+1. Download the script
+2. Right-click the script and select "Properties"
+3. Check the "Unblock" box and click OK
+4. Run it with PowerShell
+
+## ✨ Features
+
+- 🖥️ User-friendly graphical interface
+- 🔄 Automatic configuration of required settings
+- 💾 Backup creation before modifications
+- 📊 Real-time progress monitoring
+- 📝 Detailed logging system
+- 🔒 Secure SSH connection handling
+- ⚡ Power button functionality setup
+- 🌡️ Fan control configuration
+
+## 🔧 What It Configures
+
+- GPIO settings for IR receiver
+- I2C interface
+- UART configuration
+- USB power settings
+- Fan control parameters
+- Power button functionality
+- NVMe support (for Argon V3 with NVMe)
+- DAC support (optional)
+
+## 📋 Requirements
+
+- Windows with PowerShell 5.1 or later
 - LibreELEC installed on Raspberry Pi 5
 - Network connection to your LibreELEC device
 
