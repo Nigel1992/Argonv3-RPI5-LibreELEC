@@ -1,101 +1,116 @@
 # 🛠️ Argon ONE V3 Setup Script for LibreELEC on Raspberry Pi 5
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue)
-![Platform](https://img.shields.io/badge/platform-LibreELEC-green)
-![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)
+[![Version](https://img.shields.io/badge/version-1.2.2-blue)](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/releases)
+[![Platform](https://img.shields.io/badge/platform-LibreELEC-green)](https://libreelec.tv/)
+[![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)](https://www.raspberrypi.com/)
+[![PowerShell](https://img.shields.io/badge/powershell-%3E%3D5.1-blue)](https://github.com/PowerShell/PowerShell)
+[![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
 ## 📝 Description
 
-This PowerShell script provides an easy-to-use GUI for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. It automates the setup process and ensures all necessary configurations are properly applied.
+A powerful PowerShell GUI tool for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. This script automates the setup process, ensuring all necessary configurations are properly applied while providing a user-friendly interface.
 
-![{77D0D9BC-2A71-40FB-B5BA-894F4F25D521}](https://github.com/user-attachments/assets/d48aabef-6a30-4fe0-af09-c5bc42199b40)
-
+![Argon ONE V3 Setup Interface](https://github.com/user-attachments/assets/62c1119e-e62d-4256-9d45-d1853e8d2d63)
 
 ## 🚀 Quick Start
 
-Run directly from PowerShell (Administrator):
-```powershell
-# First, allow remote script execution (only needed once)
-Set-ExecutionPolicy Unrestricted -Force
-
-# Then run the script
-irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
-```
-
-Or for a more secure approach, you can use:
+### Option 1: Direct Installation (Recommended)
 ```powershell
 # Allow remote signed scripts (recommended, only needed once)
 Set-ExecutionPolicy RemoteSigned -Force
 
-# Then run the script
-irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
+# Run the script
+irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argonv3.ps1 | iex
 ```
 
-Alternatively, download and run manually (you'll need to do this every time the script gets an update, so not recommended):
-1. Download the script
+### Option 2: Manual Installation
+1. Download the script from the [releases page](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/releases)
 2. Right-click the script and select "Properties"
 3. Check the "Unblock" box and click OK
-4. Run it with PowerShell
+4. Run with PowerShell
 
-## ✨ Features
+## ✨ Key Features
 
-- 🖥️ User-friendly graphical interface
-- 🔄 Automatic configuration of required settings
-- 💾 Backup creation before modifications
-- 📊 Real-time progress monitoring
-- 📝 Detailed logging system
-- 🔒 Secure SSH connection handling
-- ⚡ Power button functionality setup
-- 🌡️ Fan control configuration
+| Feature | Description |
+|---------|-------------|
+| 🖥️ GUI Interface | Modern, intuitive graphical user interface |
+| 🔄 Auto Config | Automatic configuration of required settings |
+| 💾 Backup System | Creates backups before any modifications |
+| 📊 Progress Tracking | Real-time progress monitoring |
+| 📝 Logging | Comprehensive logging system |
+| 🌓 Themes | Dark/Light theme support |
+| 🔒 Secure SSH | Safe and secure SSH connection handling |
+| 📋 HTML Reports | Detailed configuration reports |
 
-## 🔧 What It Configures
+## 🔧 Configuration Options
 
+### Core Settings
 - GPIO settings for IR receiver
-- I2C interface
-- UART configuration
-- USB power settings
+- I2C interface configuration
+- UART settings
+- USB power management
 - Fan control parameters
 - Power button functionality
-- NVMe support (for Argon V3 with NVMe)
-- DAC support (optional)
 
-## 📋 Requirements
-
-- Windows with PowerShell 5.1 or later
-- LibreELEC installed on Raspberry Pi 5
-- Network connection to your LibreELEC device
-
-## Features
-- Easy configuration of Argon V3 case settings
-- Support for both normal and NVMe versions
+### Advanced Options
+- NVMe support (Argon V3 with NVMe)
 - PCIe generation selection (Gen 1/2/3)
 - HiFiBerry DAC support
 - Automatic backup creation
-- Dark/Light theme toggle
-- Session-based logging
-- Current settings test functionality
-- HTML-based configuration reports
+- Custom configuration testing
 
-## Installation
-1. Download the latest release
-2. Run the script using PowerShell
-3. Required modules will be installed automatically
+## 📋 System Requirements
 
-## Usage
-1. Enter your LibreELEC device's IP address
-2. Test the connection (default credentials: root/libreelec)
-3. Select your Argon V3 version and options
-4. Click "Test Current Settings" to view current configuration
-5. Click "Apply Configuration" to save changes
-6. View logs anytime using the "Show Log" button
+- Windows OS with PowerShell 5.1 or later
+- LibreELEC installed on Raspberry Pi 5
+- Network connection to your LibreELEC device
+- Administrator privileges (for module installation)
 
-## File Locations
-- Settings: `%USERPROFILE%\Documents\ArgonSetup\argon_settings.xml`
-- Logs: `%USERPROFILE%\Documents\ArgonSetup\logs\argon_setup_[timestamp].log`
-- HTML Reports: `%USERPROFILE%\Documents\ArgonSetup\current_settings.html`
+## 📁 File Locations
 
-## Support
-For issues or suggestions, please visit the GitHub repository.
+```plaintext
+%USERPROFILE%\Documents\ArgonSetup\
+├── argon_settings.xml       # User settings
+├── connection_settings.xml  # Connection details
+└── logs\                   # Log directory
+    └── argon_setup_*.log   # Session logs
+```
 
-## License
-MIT License - See LICENSE file for details
+## 🔍 Usage Guide
+
+1. **Initial Setup**
+   - Launch the script
+   - Required modules will be installed automatically
+   - Accept the module installation prompt
+
+2. **Configuration**
+   - Enter your LibreELEC device's IP address
+   - Test the connection (default: root/libreelec)
+   - Select your Argon V3 version
+   - Choose additional options (NVMe, DAC)
+
+3. **Apply Settings**
+   - Click "Test Current Settings" to verify
+   - Use "Apply Configuration" to save changes
+   - Review logs with "Show Log" button
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For issues, suggestions, or contributions:
+- Open an [issue](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/issues)
+- Submit a [pull request](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/pulls)
+- Check the [discussions](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/discussions)
+
+---
+
+<div align="center">
+Made with ❤️ by Nigel Hagen
+</div>
