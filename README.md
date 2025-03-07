@@ -10,8 +10,6 @@
 
 A powerful PowerShell GUI tool for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. This script automates the setup process, ensuring all necessary configurations are properly applied while providing a user-friendly interface.
 
-![Argon ONE V3 Setup Interface](https://github.com/user-attachments/assets/62c1119e-e62d-4256-9d45-d1853e8d2d63)
-
 ## 🚀 Quick Start
 
 ### Option 1: Direct Installation (Recommended)
@@ -34,30 +32,27 @@ irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argo
 | Feature | Description |
 |---------|-------------|
 | 🖥️ GUI Interface | Modern, intuitive graphical user interface |
-| 🔄 Auto Config | Automatic configuration of required settings |
-| 💾 Backup System | Creates backups before any modifications |
-| 📊 Progress Tracking | Real-time progress monitoring |
+| 🌡️ Fan Control | Advanced temperature-based fan control |
+| ⚡ Power Management | Customizable power button actions |
+| 💾 Config Backup | Creates backups of your settings |
+| 📊 Monitoring | Real-time temperature and fan monitoring |
 | 📝 Logging | Comprehensive logging system |
-| 🌓 Themes | Dark/Light theme support |
-| 🔒 Secure SSH | Safe and secure SSH connection handling |
-| 📋 HTML Reports | Detailed configuration reports |
+| 🔒 Secure | Safe SSH connection handling |
+| 📋 Reports | Configuration status reports |
 
 ## 🔧 Configuration Options
 
 ### Core Settings
-- GPIO settings for IR receiver
-- I2C interface configuration
-- UART settings
-- USB power management
-- Fan control parameters
-- Power button functionality
+- Fan speed curves
+- Temperature thresholds
+- Power button actions
+- Monitoring intervals
 
 ### Advanced Options
-- NVMe support (Argon V3 with NVMe)
-- PCIe generation selection (Gen 1/2/3)
-- HiFiBerry DAC support
-- Automatic backup creation
-- Custom configuration testing
+- Custom scripts
+- Debug logging
+- Profile management
+- Backup/restore
 
 ## 📋 System Requirements
 
@@ -86,13 +81,13 @@ irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argo
 2. **Configuration**
    - Enter your LibreELEC device's IP address
    - Test the connection (default: root/libreelec)
-   - Select your Argon V3 version
-   - Choose additional options (NVMe, DAC)
+   - Configure fan control settings
+   - Set power button actions
 
 3. **Apply Settings**
-   - Click "Test Current Settings" to verify
-   - Use "Apply Configuration" to save changes
-   - Review logs with "Show Log" button
+   - Test your configuration
+   - Apply changes
+   - Monitor performance
 
 ## 🤝 Contributing
 
