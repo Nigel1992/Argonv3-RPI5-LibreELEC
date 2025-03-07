@@ -40,7 +40,15 @@ $null = New-Item -ItemType Directory -Force -Path $PSScriptRoot
 # Set file paths
 $SETTINGS_FILE = Join-Path $PSScriptRoot "argon_settings.xml"
 $CONNECTION_FILE = Join-Path $PSScriptRoot "connection_settings.xml"
-$SCRIPT_VERSION = "1.2.1 (02/26/2024)"
+$LOG_FOLDER = Join-Path $PSScriptRoot "logs"
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$LOG_FILE = Join-Path $LOG_FOLDER "argon_setup_$timestamp.log"
+$SCRIPT_VERSION = "1.2.2 (03/07/2025)"
+
+# Create logs directory if it doesn't exist
+if (-not (Test-Path $LOG_FOLDER)) {
+    New-Item -ItemType Directory -Force -Path $LOG_FOLDER | Out-Null
+}
 
 # Get screen working area (accounts for taskbar)
 $screen = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
@@ -65,8 +73,7 @@ function Log-Message {
     
     $timestamp = Get-Date -Format "[HH:mm:ss]"
     $logMessage = "$timestamp '$Type': $Message"
-    $logBox.AppendText("$logMessage`r`n")
-    $logBox.ScrollToCaret()
+    Add-Content -Path $LOG_FILE -Value $logMessage
 }
 
 function Test-SSHConnection {
@@ -536,6 +543,206 @@ mount -o remount,ro /flash
     }
 }
 
+function Test-CurrentSettings {
+    try {
+        if (-not (Test-SSHConnection)) {
+            return
+        }
+
+        # Create SSH session
+        $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
+        $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey
+
+        try {
+            Log-Message "Testing current configuration..." "INFO"
+            Update-Progress -PercentComplete 20 -Status "Checking config.txt"
+
+            # Create HTML content with styling
+            $htmlContent = @"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Argon V3 - Current Configuration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0078D4;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #0078D4;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #0078D4;
+        }
+        .section h2 {
+            color: #2D2D2D;
+            margin-top: 0;
+            font-size: 1.4em;
+        }
+        .content {
+            font-family: 'Consolas', monospace;
+            white-space: pre-wrap;
+            padding: 10px;
+            background-color: white;
+            border-radius: 3px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .success {
+            background-color: #DFF6DD;
+            color: #107C10;
+        }
+        .warning {
+            background-color: #FFF4CE;
+            color: #805600;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Argon V3 - Current Configuration</h1>
+"@
+
+            # Check config.txt settings
+            $configContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "cat /flash/config.txt"
+            if ($configContent.ExitStatus -eq 0) {
+                $htmlContent += @"
+        <div class="section">
+            <h2>CONFIG.TXT</h2>
+            <div class="content">
+$(($configContent.Output | Where-Object { $_.Trim() -ne "" }) -join "`n")
+            </div>
+        </div>
+"@
+            }
+
+            # Check EEPROM settings
+            Update-Progress -PercentComplete 50 -Status "Checking EEPROM"
+            $eepromContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config"
+            if ($eepromContent.ExitStatus -eq 0) {
+                $htmlContent += @"
+        <div class="section">
+            <h2>EEPROM SETTINGS</h2>
+            <div class="content">
+$(($eepromContent.Output | Where-Object { $_.Trim() -ne "" -and -not $_.StartsWith("#") }) -join "`n")
+            </div>
+        </div>
+"@
+            }
+
+            # Check PCIe status if NVMe version is selected
+            if ($versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
+                Update-Progress -PercentComplete 75 -Status "Checking PCIe/NVMe"
+                $nvmeStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "lspci | grep -i nvme"
+                $htmlContent += @"
+        <div class="section">
+            <h2>NVME STATUS</h2>
+            <div class="content">
+"@
+                if ($nvmeStatus.ExitStatus -eq 0) {
+                    $htmlContent += @"
+Device Found:
+$($nvmeStatus.Output)
+            </div>
+            <div class="status success">NVMe device detected</div>
+"@
+                } else {
+                    $htmlContent += @"
+No NVMe device detected
+            </div>
+            <div class="status warning">No NVMe device detected</div>
+"@
+                }
+                $htmlContent += "</div>"
+            }
+
+            # Check DAC status if enabled
+            if ($dacCheckbox.Checked) {
+                Update-Progress -PercentComplete 90 -Status "Checking DAC"
+                $dacStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "aplay -l | grep -i hifiberry"
+                $htmlContent += @"
+        <div class="section">
+            <h2>DAC STATUS</h2>
+            <div class="content">
+"@
+                if ($dacStatus.ExitStatus -eq 0) {
+                    $htmlContent += @"
+Device Found:
+$($dacStatus.Output)
+            </div>
+            <div class="status success">HiFiBerry DAC detected</div>
+"@
+                } else {
+                    $htmlContent += @"
+No HiFiBerry DAC detected
+            </div>
+            <div class="status warning">No HiFiBerry DAC detected</div>
+"@
+                }
+                $htmlContent += "</div>"
+            }
+
+            # Add footer
+            $htmlContent += @"
+        <div class="footer">
+            Generated on $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")<br>
+            Argon V3 LibreELEC Setup v$SCRIPT_VERSION
+        </div>
+    </div>
+</body>
+</html>
+"@
+
+            # Save HTML to temp file and open in default browser
+            $htmlFile = Join-Path $PSScriptRoot "current_settings.html"
+            $htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8
+            Start-Process $htmlFile
+
+            Update-Progress -PercentComplete 100 -Status "Test complete"
+            Log-Message "Configuration test completed successfully" "SUCCESS"
+        }
+        finally {
+            if ($session) {
+                Remove-SSHSession -SessionId $session.SessionId
+            }
+            Start-Sleep -Seconds 2
+            Update-Progress -PercentComplete 0 -Status "Ready"
+        }
+    }
+    catch {
+        Log-Message "Error testing configuration: $($_.Exception.Message)" "ERROR"
+        Update-Progress -PercentComplete 0 -Status "Test failed"
+    }
+}
+
 # Create textboxes first as script-level variables
 $script:ipTextBox = New-Object System.Windows.Forms.TextBox
 $script:userTextBox = New-Object System.Windows.Forms.TextBox
@@ -858,18 +1065,22 @@ $dacCheckbox.AutoSize = $true
 $configGroup.Controls.AddRange(@($versionLabel, $versionCombo, $pcieLabel, $pcieCombo, $dacCheckbox))
 $mainLayout.Controls.Add($configGroup, 0, 2)
 
-# Bottom Panel (Buttons and Hidden Log)
+# Bottom Panel (Buttons and Progress)
 $bottomPanel = New-Object System.Windows.Forms.TableLayoutPanel
 $bottomPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$bottomPanel.ColumnCount = 1
-$bottomPanel.RowCount = 4  # Changed to 4 to add progress bar row
-$bottomPanel.Padding = New-Object System.Windows.Forms.Padding(10)
+$bottomPanel.ColumnCount = 2
+$bottomPanel.RowCount = 2
+$bottomPanel.Padding = New-Object System.Windows.Forms.Padding(20)
+$bottomPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
+$bottomPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
+$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Buttons
+$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Progress bar
 
 # Progress Panel
 $progressPanel = New-Object System.Windows.Forms.Panel
 $progressPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$progressPanel.Height = 40
-$progressPanel.Padding = New-Object System.Windows.Forms.Padding(20, 5, 20, 5)
+$progressPanel.Height = 15  # Reduced height
+$progressPanel.Padding = New-Object System.Windows.Forms.Padding(20, 0, 20, 0)  # Minimal vertical padding
 
 # Progress Bar Container (for layering)
 $progressContainer = New-Object System.Windows.Forms.Panel
@@ -879,7 +1090,7 @@ $progressContainer.Padding = New-Object System.Windows.Forms.Padding(0)
 
 # Progress Bar
 $configProgress = New-Object System.Windows.Forms.ProgressBar
-$configProgress.Size = New-Object System.Drawing.Size(700, 25)
+$configProgress.Size = New-Object System.Drawing.Size(700, 12)  # Reduced height
 $configProgress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
 $configProgress.Value = 0
 $configProgress.Dock = [System.Windows.Forms.DockStyle]::Fill
@@ -891,7 +1102,7 @@ $progressLabel = New-Object System.Windows.Forms.Label
 $progressLabel.Text = "Ready"
 $progressLabel.BackColor = [System.Drawing.Color]::Transparent
 $progressLabel.ForeColor = [System.Drawing.Color]::White
-$progressLabel.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+$progressLabel.Font = New-Object System.Drawing.Font("Segoe UI", 6)  # Smaller font
 $progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $progressLabel.Dock = [System.Windows.Forms.DockStyle]::Fill
 $progressLabel.UseCompatibleTextRendering = $true
@@ -901,17 +1112,6 @@ $progressContainer.Controls.Add($configProgress)
 $progressContainer.Controls.Add($progressLabel)
 $progressPanel.Controls.Add($progressContainer)
 
-# Set row styles
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 50))) # Apply button
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Show Log button
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Progress bar
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100))) # Log
-
-# Apply Button Panel
-$applyButtonPanel = New-Object System.Windows.Forms.Panel
-$applyButtonPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$applyButtonPanel.Height = 50
-
 # Apply Button
 $applyButton = New-Object System.Windows.Forms.Button
 $applyButton.Text = "Apply Configuration"
@@ -920,60 +1120,38 @@ $applyButton.BackColor = $THEME_PRIMARY
 $applyButton.ForeColor = [System.Drawing.Color]::White
 $applyButton.Add_Click({ Apply-Configuration })
 
-# Center the Apply button
-$applyButtonPanel.Controls.Add($applyButton)
-$applyButtonPanel.Add_Resize({
-    $applyButton.Left = ($applyButtonPanel.Width - $applyButton.Width) / 2
-    $applyButton.Top = ($applyButtonPanel.Height - $applyButton.Height) / 2
-})
-
-# Show Log Button Panel
-$showLogButtonPanel = New-Object System.Windows.Forms.Panel
-$showLogButtonPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$showLogButtonPanel.Height = 40
+# Test Settings Button
+$testSettingsButton = New-Object System.Windows.Forms.Button
+$testSettingsButton.Text = "Test Current Settings"
+$testSettingsButton.Size = New-Object System.Drawing.Size(150, 30)
+$testSettingsButton.BackColor = $THEME_SECONDARY
+$testSettingsButton.ForeColor = [System.Drawing.Color]::White
+$testSettingsButton.Add_Click({ Test-CurrentSettings })
 
 # Show Log Button
 $showLogButton = New-Object System.Windows.Forms.Button
 $showLogButton.Text = "Show Log"
-$showLogButton.Size = New-Object System.Drawing.Size(100, 25)
+$showLogButton.Size = New-Object System.Drawing.Size(150, 30)
 $showLogButton.BackColor = $THEME_SECONDARY
 $showLogButton.ForeColor = [System.Drawing.Color]::White
-
-# Center the Show Log button
-$showLogButtonPanel.Controls.Add($showLogButton)
-$showLogButtonPanel.Add_Resize({
-    $showLogButton.Left = ($showLogButtonPanel.Width - $showLogButton.Width) / 2
-    $showLogButton.Top = ($showLogButtonPanel.Height - $showLogButton.Height) / 2
-})
-
-# Log Box (hidden by default)
-$logBox = New-Object System.Windows.Forms.TextBox
-$logBox.Multiline = $true
-$logBox.ScrollBars = "Vertical"
-$logBox.Dock = [System.Windows.Forms.DockStyle]::Fill
-$logBox.Font = New-Object System.Drawing.Font("Consolas", 10)
-$logBox.ReadOnly = $true
-$logBox.Visible = $false
-
-# Add controls to bottom panel
-$bottomPanel.Controls.Add($applyButtonPanel, 0, 0)
-$bottomPanel.Controls.Add($showLogButtonPanel, 0, 1)
-$bottomPanel.Controls.Add($progressPanel, 0, 2)
-$bottomPanel.Controls.Add($logBox, 0, 3)
-
-# Toggle log visibility
-$showLogButton.Add_Click({
-    if ($logBox.Visible) {
-        $logBox.Visible = $false
-        $showLogButton.Text = "Show Log"
-        $form.Height = $defaultHeight
+$showLogButton.Add_Click({ 
+    if (Test-Path $LOG_FILE) {
+        Start-Process $LOG_FILE
     } else {
-        $logBox.Visible = $true
-        $showLogButton.Text = "Hide Log"
-        $newHeight = [Math]::Min($expandedHeight, $maxHeight)
-        $form.Height = $newHeight
+        [System.Windows.Forms.MessageBox]::Show(
+            "No log file found for this session.`n`nLog files are stored in:`n$LOG_FOLDER",
+            "View Log",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        )
     }
 })
+
+# Center buttons in their cells
+$bottomPanel.Controls.Add($applyButton, 0, 0)
+$bottomPanel.Controls.Add($testSettingsButton, 1, 0)
+$bottomPanel.Controls.Add($showLogButton, 0, 1)
+$bottomPanel.Controls.Add($progressPanel, 1, 1)
 
 $mainLayout.Controls.Add($bottomPanel, 0, 3)
 
@@ -1034,10 +1212,6 @@ function Apply-Theme {
     # Update progress container
     $progressContainer.BackColor = $Theme.ProgressBackground
     
-    # Update log box
-    $logBox.BackColor = $Theme.LogBackground
-    $logBox.ForeColor = $Theme.LogText
-    
     # Update theme toggle text
     $themeToggle.Text = if ($Theme -eq $DarkTheme) { "Light" } else { "Dark" }
     
@@ -1093,3 +1267,8 @@ $null = $form.ShowDialog()
 
 # Apply initial theme
 Apply-Theme $LightTheme
+
+# Form height adjustments
+$form.Size = New-Object System.Drawing.Size(800, 600) # Reduced height since we removed the log UI
+$form.MinimumSize = New-Object System.Drawing.Size(800, 600)
+$form.MaximumSize = New-Object System.Drawing.Size(1200, 600)

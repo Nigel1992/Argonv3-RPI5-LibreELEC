@@ -1,190 +1,61 @@
-# 🛠️ Argon ONE V3 Setup Script for LibreELEC on Raspberry Pi 5
+# Argon V3 LibreELEC Setup Tool
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue)
-![Platform](https://img.shields.io/badge/platform-LibreELEC-green)
-![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)
+A PowerShell-based configuration tool for Argon V3 cases running LibreELEC on Raspberry Pi 5.
 
-## 📝 Description
+## Version 1.2.2 (March 7, 2025)
 
-This PowerShell script provides an easy-to-use GUI for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. It automates the setup process and ensures all necessary configurations are properly applied.
+### New Features & Improvements
+- Added "Test Current Settings" functionality with HTML report generation
+- Improved settings display with a clean, modern HTML layout
+- Implemented per-session log files with timestamps
+- Added "Show Log" button to view current session's log file
+- Reduced progress bar size for a cleaner interface
+- Enhanced error handling and user feedback
 
-![{542364D6-3A6B-4566-AE42-AF49EDDE424D}](https://github.com/user-attachments/assets/981f7a07-6a35-4f7b-826b-a9ea281b8ed4)
+### Technical Changes
+- Log files are now stored in `Documents\ArgonSetup\logs` with timestamps
+- Configuration test results are displayed in a formatted HTML page
+- Progress bar height reduced to 12 pixels for better aesthetics
+- Improved theme handling for both light and dark modes
 
-
-## 🚀 Quick Start
-
-Run directly from PowerShell (Administrator):
-```powershell
-# First, allow remote script execution (only needed once)
-Set-ExecutionPolicy Unrestricted -Force
-
-# Then run the script
-irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
-```
-
-Or for a more secure approach, you can use:
-```powershell
-# Allow remote signed scripts (recommended, only needed once)
-Set-ExecutionPolicy RemoteSigned -Force
-
-# Then run the script
-irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
-```
-
-Alternatively, download and run manually:
-1. Download the script
-2. Right-click the script and select "Properties"
-3. Check the "Unblock" box and click OK
-4. Run it with PowerShell
-
-## ✨ Features
-
-- 🖥️ User-friendly graphical interface
-- 🔄 Automatic configuration of required settings
-- 💾 Backup creation before modifications
-- 📊 Real-time progress monitoring
-- 📝 Detailed logging system
-- 🔒 Secure SSH connection handling
-- ⚡ Power button functionality setup
-- 🌡️ Fan control configuration
-
-## 🔧 What It Configures
-
-- GPIO settings for IR receiver
-- I2C interface
-- UART configuration
-- USB power settings
-- Fan control parameters
-- Power button functionality
-- NVMe support (for Argon V3 with NVMe)
-- DAC support (optional)
-
-## 📋 Requirements
-
-- Windows with PowerShell 5.1 or later
+## Requirements
+- Windows 10/11
+- PowerShell 5.1 or later
+- Posh-SSH module (automatically installed if missing)
 - LibreELEC installed on Raspberry Pi 5
-- Network connection to your Pi
-- Argon ONE V3 case
-- Internet connection (for first run to install required module)
+- Network connection to your LibreELEC device
 
-## 💡 Usage
+## Features
+- Easy configuration of Argon V3 case settings
+- Support for both normal and NVMe versions
+- PCIe generation selection (Gen 1/2/3)
+- HiFiBerry DAC support
+- Automatic backup creation
+- Dark/Light theme toggle
+- Session-based logging
+- Current settings test functionality
+- HTML-based configuration reports
 
-1. Launch the script using either method above
-2. Fill in connection details:
-   - IP Address (find in Kodi under System → System info → Network)
-   - Username (default: root)
-   - Password (default: libreelec)
-3. Click "Test Connection"
-4. Select your Argon V3 version:
-   - Normal
-   - With NVMe
-5. Configure additional options:
-   - PCIe Generation (for NVMe version)
-   - DAC support (if using Argon DAC)
-6. Click "Apply Configuration"
-7. Choose whether to create backups
-8. Wait for completion
-9. Reboot your device when prompted
+## Installation
+1. Download the latest release
+2. Run the script using PowerShell
+3. Required modules will be installed automatically
 
-## 🔍 Logging
+## Usage
+1. Enter your LibreELEC device's IP address
+2. Test the connection (default credentials: root/libreelec)
+3. Select your Argon V3 version and options
+4. Click "Test Current Settings" to view current configuration
+5. Click "Apply Configuration" to save changes
+6. View logs anytime using the "Show Log" button
 
-The script maintains detailed logs of all operations, including:
-- Connection attempts
-- Configuration changes
-- Backup creation
-- Error messages
-- Success confirmations
+## File Locations
+- Settings: `%USERPROFILE%\Documents\ArgonSetup\argon_settings.xml`
+- Logs: `%USERPROFILE%\Documents\ArgonSetup\logs\argon_setup_[timestamp].log`
+- HTML Reports: `%USERPROFILE%\Documents\ArgonSetup\current_settings.html`
 
-Click "Show Log" in the interface to view detailed operation logs.
+## Support
+For issues or suggestions, please visit the GitHub repository.
 
-## 🛟 Backup System
-
-Before making any changes, the script can:
-- Create backups of existing configurations
-- Store them in `/storage/ArgonScriptBackup`
-- Add timestamps for easy identification
-- Verify backup success
-- Maintain multiple backup versions
-
-## 💾 Settings Storage
-
-The script stores settings in your Documents folder:
-- Connection settings for quick reconnection
-- Configuration preferences
-- All settings are stored locally
-
-## ⚠️ Important Notes
-
-- Always test connection before applying changes
-- Backup option is recommended
-- Reboot required after configuration
-- Check logs for detailed information
-- Settings are saved in Documents/ArgonSetup
-- First run requires internet to install SSH module
-
-## 🔒 Security
-
-- Passwords are handled securely
-- SSH connections use secure protocols
-- No data is transmitted online
-- All operations are logged for verification
-  
-## 🔷 To-Do
-- Fix log scrolling
-
-## 🤝 Contributing
-
-Feel free to:
-- Report issues
-- Suggest improvements
-- Submit pull requests
-- Share your experience
-- Help others in discussions
-
-## 📜 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Argon40 for the amazing case
-- LibreELEC team
-- Raspberry Pi community
-- PowerShell community
-- All contributors and testers
-
-## 📞 Support
-
-For issues and questions:
-- Create an issue in this repository
-- Check existing issues for solutions
-- Include log files when reporting problems
-- Provide your LibreELEC version
-- Specify your Argon case version
-
-## 🔄 Updates
-
-You can always get the latest version using the USAGE commands above.
-
-## 🛠️ Troubleshooting
-
-Common issues and solutions:
-1. SSH Connection Failed:
-   - Verify IP address in Kodi
-   - Ensure SSH is enabled in LibreELEC
-   - Check network connectivity
-   - Verify credentials
-
-2. Module Installation Issues:
-   - Run PowerShell as Administrator
-   - Ensure internet connectivity
-   - Check Windows PowerShell version
-
-3. Configuration Issues:
-   - Check logs for detailed error messages
-   - Verify LibreELEC version compatibility
-   - Ensure proper permissions
-   - Check available space in /storage
-
----
-Made with ❤️ for the Raspberry Pi community
+## License
+MIT License - See LICENSE file for details
