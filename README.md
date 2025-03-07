@@ -1,6 +1,6 @@
 # 🛠️ Argon ONE V3 Setup Script for LibreELEC on Raspberry Pi 5
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue)
+![Version](https://img.shields.io/badge/version-1.2.2-blue)
 ![Platform](https://img.shields.io/badge/platform-LibreELEC-green)
 ![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)
 
