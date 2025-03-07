@@ -1,28 +1,28 @@
 # Setup Guide
 
-This guide will walk you through using our PowerShell script to configure your Argon ONE V3 case with LibreELEC on Raspberry Pi 5.
+This guide will walk you through the complete setup process for the Argon ONE V3 case with LibreELEC on Raspberry Pi 5.
 
 ## Prerequisites
 
 ### Hardware Requirements
-- Raspberry Pi 5 with LibreELEC already installed
+- Raspberry Pi 5
 - Argon ONE V3 case
 - Network connection to your Pi
 
 ### Software Requirements
 - Windows PC with PowerShell 5.1 or later
+- LibreELEC installed on your Pi
 - Administrator privileges on your Windows PC
-- Network access to your LibreELEC device
 
-## Setup Steps
+## Installation Steps
 
 ### 1. Prepare Your System
 
-1. Ensure LibreELEC is installed and running on your Pi
+1. Install LibreELEC on your Raspberry Pi 5
 2. Note down your Pi's IP address from LibreELEC settings
 3. Make sure SSH is enabled in LibreELEC services
 
-### 2. Download and Run the Script
+### 2. Run the PowerShell Script
 
 #### Option 1: Direct Installation (Recommended)
 ```powershell
@@ -34,60 +34,40 @@ irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argo
 ```
 
 #### Option 2: Manual Installation
-1. Download the script from our [Releases page](../releases)
+1. Download the script from our [releases page](../releases)
 2. Right-click the downloaded script
 3. Select "Properties" and check "Unblock"
 4. Right-click and select "Run with PowerShell"
 
-### 3. Initial Configuration
+### 3. Install Argon Forty Addon
 
-1. Enter your LibreELEC device's IP address
-2. Verify the connection (default credentials: root/libreelec)
-3. Select your configuration options:
-   - Fan control settings
-   - Power button behavior
-   - Temperature thresholds
-   - Additional features
+Follow the complete addon installation guide at:
+[Reddit Guide: How to make the Argon V3 work flawlessly](https://www.reddit.com/r/libreELEC/comments/1hxsc2a/guide_how_to_make_the_argon_v3_work_flawlessly/)
 
 ### 4. Verify Installation
 
-After configuration:
-1. Test the fan control
-2. Verify power button functionality
-3. Check temperature readings
-4. Review the configuration log
+After setup:
+1. Confirm script completed successfully
+2. Verify addon is installed and working
+3. Test fan control through addon
+4. Check temperature monitoring
 
-## Configuration Options
+## Configuration
 
-### Fan Control
-- Temperature-based speed control
-- Custom fan curves
-- Manual speed override
-- Silent mode options
+### Basic Settings
+- Network connection
+- SSH access
+- Initial setup options
+- Basic configuration
 
-### Power Button
-- Short press action
-- Long press action
-- Double press action
-- Custom commands
-
-### Advanced Settings
-- Temperature monitoring interval
-- Logging options
-- Debug mode
-- Custom scripts
-
-## Troubleshooting
-
-If you encounter issues:
-
-1. Check network connectivity
-2. Verify LibreELEC SSH access
-3. Review PowerShell execution policy
-4. Check the [Troubleshooting Guide](Troubleshooting)
+### Advanced Options
+- Custom configurations
+- Additional features
+- Performance settings
 
 ## Next Steps
 
-- [Configure Fan Control](Fan-Control)
-- [Customize Power Button](Power-Button)
-- [Advanced Configuration](Advanced-Config) 
+1. Configure [Fan Control](Fan-Control.md)
+2. Set up [Power Button](Power-Button.md)
+3. Review [FAQ](FAQ.md) for common questions
+4. Check [Troubleshooting](Troubleshooting.md) if needed 
