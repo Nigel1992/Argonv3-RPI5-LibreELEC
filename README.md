@@ -19,7 +19,7 @@ Run directly from PowerShell (Administrator):
 Set-ExecutionPolicy Unrestricted -Force
 
 # Then run the script
-irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
+irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argonv3.ps1 | iex
 ```
 
 Or for a more secure approach, you can use:
@@ -28,7 +28,7 @@ Or for a more secure approach, you can use:
 Set-ExecutionPolicy RemoteSigned -Force
 
 # Then run the script
-irm https://raw.githubusercontent.com/nigelhagen/argon-libreelec-setup/main/argonv3.ps1 | iex
+irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argonv3.ps1 | iex
 ```
 
 Alternatively, download and run manually (you'll need to do this every time the script gets an update, so not recommended):
