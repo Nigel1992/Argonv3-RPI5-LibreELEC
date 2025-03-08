@@ -281,10 +281,6 @@ function Create-Backup {
 }
 
 function Apply-Configuration {
-    if (-not (Test-SSHConnection)) {
-        return
-    }
-
     try {
         # Always save all settings first
         $allSettings = @{
@@ -298,10 +294,46 @@ function Apply-Configuration {
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         Log-Message "Settings saved to $SETTINGS_FILE" "SUCCESS"
 
-        # Create SSH session
+        # Create SSH session with retry logic
         $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
         $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
-        $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey
+        
+        $sshParams = @{
+            ComputerName = $ipTextBox.Text
+            Credential = $cred
+            AcceptKey = $true
+            ErrorAction = 'Stop'
+            WarningAction = 'SilentlyContinue'
+            Force = $true
+        }
+
+        # Try to establish SSH connection
+        $session = $null
+        try {
+            $session = New-SSHSession @sshParams
+        }
+        catch {
+            Log-Message "Default connection attempt failed, trying with alternative settings..." "WARNING"
+            try {
+                $sshParams['KeyExchange'] = 'diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha256'
+                $session = New-SSHSession @sshParams
+            }
+            catch {
+                Log-Message "Failed to establish SSH connection: $($_.Exception.Message)" "ERROR"
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Failed to establish SSH connection. Please test your connection first.",
+                    "Connection Error",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Error
+                )
+                return
+            }
+        }
+
+        if (-not $session) {
+            Log-Message "No valid SSH session established" "ERROR"
+            return
+        }
 
         # Ask user about backup
         $backupResult = [System.Windows.Forms.MessageBox]::Show(
@@ -313,6 +345,9 @@ function Apply-Configuration {
 
         if ($backupResult -eq [System.Windows.Forms.DialogResult]::Cancel) {
             Log-Message "Configuration cancelled by user" "INFO"
+            if ($session) {
+                Remove-SSHSession -SessionId $session.SessionId
+            }
             return
         }
 
@@ -324,7 +359,6 @@ function Apply-Configuration {
 
                 # Create backup directory with verbose output
                 $createDirScript = 'ls -la /storage/ && mkdir -p /storage/ArgonScriptBackup && ls -la /storage/ArgonScriptBackup'
-
                 $createDirResult = Invoke-SSHCommand -SessionId $session.SessionId -Command $createDirScript
 
                 Log-Message "Storage directory contents: " "INFO"
@@ -373,33 +407,9 @@ function Apply-Configuration {
                         }
                     } else {
                         Log-Message "Warning: Could not set permissions - $($permissionResult.Error)" "WARNING"
-                        $continueResult = [System.Windows.Forms.MessageBox]::Show(
-                            "Failed to set permissions on backup directory. Do you want to continue without backups?",
-                            "Backup Directory Error",
-                            [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                            [System.Windows.Forms.MessageBoxIcon]::Warning
-                        )
-                        if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
-                            Log-Message "Configuration cancelled due to backup directory permission failure" "WARNING"
-                            Update-Progress -PercentComplete 0 -Status "Ready"
-                            return
-                        }
-                        Log-Message "Continuing without backups" "WARNING"
                     }
                 } else {
                     Log-Message "Failed to create backup directory - $($createDirResult.Error)" "ERROR"
-                    $continueResult = [System.Windows.Forms.MessageBox]::Show(
-                        "Failed to create backup directory. Do you want to continue without backups?",
-                        "Backup Directory Error",
-                        [System.Windows.Forms.MessageBoxButtons]::YesNo,
-                        [System.Windows.Forms.MessageBoxIcon]::Warning
-                    )
-                    if ($continueResult -eq [System.Windows.Forms.DialogResult]::No) {
-                        Log-Message "Configuration cancelled due to backup directory creation failure" "WARNING"
-                        Update-Progress -PercentComplete 0 -Status "Ready"
-                        return
-                    }
-                    Log-Message "Continuing without backups" "WARNING"
                 }
             } else {
                 Log-Message "User chose to skip backups" "INFO"
@@ -580,13 +590,30 @@ mount -o remount,ro /flash
                 [System.Windows.Forms.MessageBoxIcon]::Error
             )
         }
-    }
-    finally {
-        if ($session) {
-            # Remount as read-only before closing
-            Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,ro /flash"
-            Remove-SSHSession -SessionId $session.SessionId
+        finally {
+            if ($session) {
+                try {
+                    # Remount as read-only before closing
+                    Invoke-SSHCommand -SessionId $session.SessionId -Command "mount -o remount,ro /flash"
+                }
+                catch {
+                    Log-Message "Warning: Could not remount flash as read-only: $($_.Exception.Message)" "WARNING"
+                }
+                finally {
+                    Remove-SSHSession -SessionId $session.SessionId
+                }
+            }
         }
+    }
+    catch {
+        Update-Progress -PercentComplete 0 -Status "Configuration failed"
+        Log-Message "Fatal error in configuration: $($_.Exception.Message)" "ERROR"
+        [System.Windows.Forms.MessageBox]::Show(
+            "A fatal error occurred during configuration. Please check the log for details.",
+            "Fatal Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        )
     }
 }
 
