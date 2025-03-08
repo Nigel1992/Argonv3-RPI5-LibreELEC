@@ -83,47 +83,89 @@ function Test-SSHConnection {
         
         Log-Message "Testing connection to $($ipTextBox.Text)..." "INFO"
         
-        $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey -ErrorAction Stop
-        if ($session) {
-            Log-Message "Connection successful!" "SUCCESS"
-            Remove-SSHSession -SessionId $session.SessionId
+        # Try different SSH connection methods
+        $sshParams = @{
+            ComputerName = $ipTextBox.Text
+            Credential = $cred
+            AcceptKey = $true
+            ErrorAction = 'Stop'
+            WarningAction = 'SilentlyContinue'
+            Force = $true
+        }
 
-            # Save only connection settings
-            $connectionSettings = @{
-                IP = $ipTextBox.Text
-                Username = $userTextBox.Text
-                Password = $passTextBox.Text
+        # First try with default settings
+        try {
+            $session = New-SSHSession @sshParams
+            if ($session) {
+                Log-Message "Connection successful using default settings!" "SUCCESS"
+                Remove-SSHSession -SessionId $session.SessionId
+                
+                # Save connection settings
+                $connectionSettings = @{
+                    IP = $ipTextBox.Text
+                    Username = $userTextBox.Text
+                    Password = $passTextBox.Text
+                }
+
+                try {
+                    Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
+                    Log-Message "Connection settings saved" "SUCCESS"
+                }
+                catch {
+                    Log-Message "Warning: Could not save connection settings - $($_.Exception.Message)" "WARNING"
+                }
+
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($ipTextBox.Text)`n- Username: $($userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
+                    "Connection Successful",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Information
+                )
+                
+                return $true
             }
-
-            # Save connection settings to file
+        }
+        catch {
+            Log-Message "Default connection attempt failed, trying with alternative settings..." "WARNING"
+            
+            # Try with explicit key exchange algorithm
             try {
-                Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
-                Log-Message "Connection settings saved" "SUCCESS"
+                $sshParams['KeyExchange'] = 'diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha256'
+                $session = New-SSHSession @sshParams
+                
+                if ($session) {
+                    Log-Message "Connection successful using alternative key exchange!" "SUCCESS"
+                    Remove-SSHSession -SessionId $session.SessionId
+                    
+                    # Save connection settings
+                    $connectionSettings = @{
+                        IP = $ipTextBox.Text
+                        Username = $userTextBox.Text
+                        Password = $passTextBox.Text
+                    }
+
+                    try {
+                        Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
+                        Log-Message "Connection settings saved" "SUCCESS"
+                    }
+                    catch {
+                        Log-Message "Warning: Could not save connection settings - $($_.Exception.Message)" "WARNING"
+                    }
+
+                    [System.Windows.Forms.MessageBox]::Show(
+                        "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($ipTextBox.Text)`n- Username: $($userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
+                        "Connection Successful",
+                        [System.Windows.Forms.MessageBoxButtons]::OK,
+                        [System.Windows.Forms.MessageBoxIcon]::Information
+                    )
+                    
+                    return $true
+                }
             }
             catch {
-                Log-Message "Warning: Could not save connection settings - $($_.Exception.Message)" "WARNING"
+                Log-Message "All connection attempts failed: $($_.Exception.Message)" "ERROR"
+                throw
             }
-
-            # Success message
-            $successMessage = @"
-Connection successful!
-
-Your connection settings have been saved:
-- IP Address: $($ipTextBox.Text)
-- Username: $($userTextBox.Text)
-- Password: ********
-
-You can now proceed with applying the configuration.
-"@
-
-            [System.Windows.Forms.MessageBox]::Show(
-                $successMessage,
-                "Connection Successful",
-                [System.Windows.Forms.MessageBoxButtons]::OK,
-                [System.Windows.Forms.MessageBoxIcon]::Information
-            )
-            
-            return $true
         }
     }
     catch {
@@ -149,6 +191,11 @@ Unable to establish SSH connection. Please follow these steps:
    - Verify LibreELEC's IP in Kodi: System → System info → Network
    - Ensure your PC and LibreELEC are on the same network
    - Check that no firewall is blocking port 22
+
+4. If you're still having issues:
+   - Try rebooting both your PC and LibreELEC
+   - Temporarily disable your firewall
+   - Make sure you have the latest LibreELEC version
 
 Need help? Visit the LibreELEC SSH guide online.
 "@
