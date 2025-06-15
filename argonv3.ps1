@@ -115,6 +115,7 @@ function Test-SSHConnection {
                     Log-Message "Warning: Could not save connection settings - $($_.Exception.Message)" "WARNING"
                 }
 
+                Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
                 [System.Windows.Forms.MessageBox]::Show(
                     "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($ipTextBox.Text)`n- Username: $($userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
                     "Connection Successful",
@@ -151,7 +152,7 @@ function Test-SSHConnection {
                     catch {
                         Log-Message "Warning: Could not save connection settings - $($_.Exception.Message)" "WARNING"
                     }
-
+                    Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
                     [System.Windows.Forms.MessageBox]::Show(
                         "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($ipTextBox.Text)`n- Username: $($userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
                         "Connection Successful",
