@@ -623,7 +623,7 @@ function Test-CurrentSettings {
         if (-not (Test-SSHConnection)) {
             return
         }
-
+        Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         # Create SSH session
         $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
         $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
