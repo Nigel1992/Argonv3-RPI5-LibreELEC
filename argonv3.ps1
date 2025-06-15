@@ -292,6 +292,7 @@ function Apply-Configuration {
             PCIe = $pcieCombo.SelectedItem
             DAC = $dacCheckbox.Checked
         }
+        Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         Log-Message "Settings saved to $SETTINGS_FILE" "SUCCESS"
 
@@ -623,6 +624,7 @@ function Test-CurrentSettings {
         if (-not (Test-SSHConnection)) {
             return
         }
+        Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         # Create SSH session
         $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
@@ -630,6 +632,8 @@ function Test-CurrentSettings {
         $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey
 
         try {
+        Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
+        
             Log-Message "Testing current configuration..." "INFO"
             Update-Progress -PercentComplete 20 -Status "Checking config.txt"
 
