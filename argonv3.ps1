@@ -621,21 +621,35 @@ mount -o remount,ro /flash
 
 function Test-CurrentSettings {
     try {
+        # Define connectionSettings and allSettings here
+        $connectionSettings = @{
+            IP = $script:ipTextBox.Text
+            Username = $script:userTextBox.Text
+            Password = $script:passTextBox.Text
+        }
+        $allSettings = @{
+            IP = $script:ipTextBox.Text
+            Username = $script:userTextBox.Text
+            Password = $script:passTextBox.Text
+            Version = $script:versionCombo.SelectedItem
+            PCIe = $script:pcieCombo.SelectedItem
+            DAC = $script:dacCheckbox.Checked
+        }
+
         if (-not (Test-SSHConnection)) {
             return
         }
-        Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
-        Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
+        
+        [cite_start]Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force [cite: 88, 89]
+        
         # Create SSH session
-        $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
-        $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
-        $session = New-SSHSession -ComputerName $ipTextBox.Text -Credential $cred -AcceptKey
+        [cite_start]$securePass = ConvertTo-SecureString $script:passTextBox.Text -AsPlainText -Force [cite: 88]
+        [cite_start]$cred = New-Object System.Management.Automation.PSCredential ($script:userTextBox.Text, $securePass) [cite: 88]
+        [cite_start]$session = New-SSHSession -ComputerName $script:ipTextBox.Text -Credential $cred -AcceptKey [cite: 88]
 
         try {
-        Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
-        
-            Log-Message "Testing current configuration..." "INFO"
-            Update-Progress -PercentComplete 20 -Status "Checking config.txt"
+            [cite_start]Log-Message "Testing current configuration..." "INFO" [cite: 89]
+            [cite_start]Update-Progress -PercentComplete 20 -Status "Checking config.txt" [cite: 89]
 
             # Create HTML content with styling
             $htmlContent = @"
@@ -645,63 +659,63 @@ function Test-CurrentSettings {
     <title>Argon V3 - Current Configuration</title>
     <style>
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Segoe UI', Arial, sans-serif; 
             max-width: 800px;
             margin: 20px auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: #f5f5f5; 
         }
         .container {
-            background-color: white;
+            background-color: white; 
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         h1 {
-            color: #0078D4;
-            text-align: center;
+            color: #0078D4; 
+            text-align: center; 
             padding-bottom: 10px;
-            border-bottom: 2px solid #0078D4;
-            margin-bottom: 30px;
+            border-bottom: 2px solid #0078D4; 
+            margin-bottom: 30px; 
         }
         .section {
-            margin-bottom: 30px;
-            padding: 15px;
+            margin-bottom: 30px; 
+            padding: 15px; 
             background-color: #f8f9fa;
             border-radius: 5px;
-            border-left: 4px solid #0078D4;
+            border-left: 4px solid #0078D4; 
         }
         .section h2 {
-            color: #2D2D2D;
-            margin-top: 0;
+            color: #2D2D2D; 
+            margin-top: 0; 
             font-size: 1.4em;
         }
         .content {
-            font-family: 'Consolas', monospace;
-            white-space: pre-wrap;
+            font-family: 'Consolas', monospace; 
+            white-space: pre-wrap; 
             padding: 10px;
             background-color: white;
             border-radius: 3px;
         }
         .status {
-            padding: 5px 10px;
-            border-radius: 3px;
+            padding: 5px 10px; 
+            border-radius: 3px; 
             display: inline-block;
             margin-top: 5px;
         }
         .success {
-            background-color: #DFF6DD;
-            color: #107C10;
+            background-color: #DFF6DD; 
+            color: #107C10; 
         }
         .warning {
-            background-color: #FFF4CE;
-            color: #805600;
+            background-color: #FFF4CE; 
+            color: #805600; 
         }
         .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #666;
-            font-size: 0.9em;
+            text-align: center; 
+            margin-top: 30px; 
+            color: #666; 
+            font-size: 0.9em; 
         }
     </style>
 </head>
@@ -720,11 +734,11 @@ function Test-CurrentSettings {
 $(($configContent.Output | Where-Object { $_.Trim() -ne "" }) -join "`n")
             </div>
         </div>
-"@
+"@ 
             }
 
             # Check EEPROM settings
-            Update-Progress -PercentComplete 50 -Status "Checking EEPROM"
+            Update-Progress -PercentComplete 50 -Status "Checking EEPROM" 
             $eepromContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config"
             if ($eepromContent.ExitStatus -eq 0) {
                 $htmlContent += @"
@@ -734,13 +748,13 @@ $(($configContent.Output | Where-Object { $_.Trim() -ne "" }) -join "`n")
 $(($eepromContent.Output | Where-Object { $_.Trim() -ne "" -and -not $_.StartsWith("#") }) -join "`n")
             </div>
         </div>
-"@
+"@ 
             }
 
             # Check PCIe status if NVMe version is selected
-            if ($versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
-                Update-Progress -PercentComplete 75 -Status "Checking PCIe/NVMe"
-                $nvmeStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "lspci | grep -i nvme"
+            if ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
+                Update-Progress -PercentComplete 75 -Status "Checking PCIe/NVMe" 
+                $nvmeStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "lspci | grep -i nvme" 
                 $htmlContent += @"
         <div class="section">
             <h2>NVME STATUS</h2>
@@ -752,21 +766,21 @@ Device Found:
 $($nvmeStatus.Output)
             </div>
             <div class="status success">NVMe device detected</div>
-"@
+"@ 
                 } else {
                     $htmlContent += @"
 No NVMe device detected
             </div>
             <div class="status warning">No NVMe device detected</div>
-"@
+"@ 
                 }
                 $htmlContent += "</div>"
             }
 
             # Check DAC status if enabled
-            if ($dacCheckbox.Checked) {
-                Update-Progress -PercentComplete 90 -Status "Checking DAC"
-                $dacStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "aplay -l | grep -i hifiberry"
+            if ($script:dacCheckbox.Checked) {
+                Update-Progress -PercentComplete 90 -Status "Checking DAC" 
+                $dacStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "aplay -l | grep -i hifiberry" 
                 $htmlContent += @"
         <div class="section">
             <h2>DAC STATUS</h2>
@@ -778,13 +792,13 @@ Device Found:
 $($dacStatus.Output)
             </div>
             <div class="status success">HiFiBerry DAC detected</div>
-"@
+"@ 
                 } else {
                     $htmlContent += @"
 No HiFiBerry DAC detected
             </div>
             <div class="status warning">No HiFiBerry DAC detected</div>
-"@
+"@ 
                 }
                 $htmlContent += "</div>"
             }
@@ -793,7 +807,7 @@ No HiFiBerry DAC detected
             $htmlContent += @"
         <div class="footer">
             Generated on $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")<br>
-            Argon V3 LibreELEC Setup v$SCRIPT_VERSION
+            Argon V3 LibreELEC Setup v$SCRIPT_VERSION 
         </div>
     </div>
 </body>
@@ -802,23 +816,23 @@ No HiFiBerry DAC detected
 
             # Save HTML to temp file and open in default browser
             $htmlFile = Join-Path $PSScriptRoot "current_settings.html"
-            $htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8
-            Start-Process $htmlFile
+            [cite_start]$htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8 [cite: 115]
+            [cite_start]Start-Process $htmlFile [cite: 115]
 
-            Update-Progress -PercentComplete 100 -Status "Test complete"
-            Log-Message "Configuration test completed successfully" "SUCCESS"
+            [cite_start]Update-Progress -PercentComplete 100 -Status "Test complete" [cite: 115]
+            [cite_start]Log-Message "Configuration test completed successfully" "SUCCESS" [cite: 115]
         }
         finally {
             if ($session) {
-                Remove-SSHSession -SessionId $session.SessionId
+                [cite_start]Remove-SSHSession -SessionId $session.SessionId [cite: 116]
             }
-            Start-Sleep -Seconds 2
-            Update-Progress -PercentComplete 0 -Status "Ready"
+            [cite_start]Start-Sleep -Seconds 2 [cite: 116]
+            [cite_start]Update-Progress -PercentComplete 0 -Status "Ready" [cite: 116]
         }
     }
     catch {
-        Log-Message "Error testing configuration: $($_.Exception.Message)" "ERROR"
-        Update-Progress -PercentComplete 0 -Status "Test failed"
+        [cite_start]Log-Message "Error testing configuration: $($_.Exception.Message)" "ERROR" [cite: 117]
+        [cite_start]Update-Progress -PercentComplete 0 -Status "Test failed" [cite: 117]
     }
 }
 
