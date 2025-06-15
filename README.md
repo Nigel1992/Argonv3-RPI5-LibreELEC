@@ -17,8 +17,8 @@ A powerful PowerShell GUI tool for configuring the Argon ONE V3 case for Raspber
 # Allow remote signed scripts (recommended, only needed once)
 Set-ExecutionPolicy RemoteSigned -Force
 
-# Run the script
-irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argonv3.ps1 | iex
+# Ensure NuGet provider is installed, then run the script
+if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) { Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser; Import-PackageProvider -Name NuGet -Force }; irm https://raw.githubusercontent.com/Nigel1992/Argonv3-RPI5-LibreELEC/main/argonv3.ps1 | iex
 ```
 
 ### Option 2: Manual Installation
