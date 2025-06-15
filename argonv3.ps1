@@ -78,14 +78,14 @@ function Log-Message {
 
 function Test-SSHConnection {
     try {
-        $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
-        $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
+        $securePass = ConvertTo-SecureString $script:passTextBox.Text -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ($script:userTextBox.Text, $securePass)
         
-        Log-Message "Testing connection to $($ipTextBox.Text)..." "INFO"
+        Log-Message "Testing connection to $($script:ipTextBox.Text)..." "INFO"
         
         # Try different SSH connection methods
         $sshParams = @{
-            ComputerName = $ipTextBox.Text
+            ComputerName = $script:ipTextBox.Text
             Credential = $cred
             AcceptKey = $true
             ErrorAction = 'Stop'
@@ -102,9 +102,9 @@ function Test-SSHConnection {
                 
                 # Save connection settings
                 $connectionSettings = @{
-                    IP = $ipTextBox.Text
-                    Username = $userTextBox.Text
-                    Password = $passTextBox.Text
+                    IP = $script:ipTextBox.Text
+                    Username = $script:userTextBox.Text
+                    Password = $script:passTextBox.Text
                 }
 
                 try {
@@ -117,7 +117,7 @@ function Test-SSHConnection {
 
                 Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
                 [System.Windows.Forms.MessageBox]::Show(
-                    "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($ipTextBox.Text)`n- Username: $($userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
+                    "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($script:ipTextBox.Text)`n- Username: $($script:userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
                     "Connection Successful",
                     [System.Windows.Forms.MessageBoxButtons]::OK,
                     [System.Windows.Forms.MessageBoxIcon]::Information
@@ -140,9 +140,9 @@ function Test-SSHConnection {
                     
                     # Save connection settings
                     $connectionSettings = @{
-                        IP = $ipTextBox.Text
-                        Username = $userTextBox.Text
-                        Password = $passTextBox.Text
+                        IP = $script:ipTextBox.Text
+                        Username = $script:userTextBox.Text
+                        Password = $script:passTextBox.Text
                     }
 
                     try {
@@ -154,7 +154,7 @@ function Test-SSHConnection {
                     }
                     Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
                     [System.Windows.Forms.MessageBox]::Show(
-                        "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($ipTextBox.Text)`n- Username: $($userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
+                        "Connection successful!`n`nYour connection settings have been saved:`n- IP Address: $($script:ipTextBox.Text)`n- Username: $($script:userTextBox.Text)`n- Password: ********`n`nYou can now proceed with applying the configuration.",
                         "Connection Successful",
                         [System.Windows.Forms.MessageBoxButtons]::OK,
                         [System.Windows.Forms.MessageBoxIcon]::Information
@@ -173,7 +173,8 @@ function Test-SSHConnection {
         Log-Message "Connection failed: $($_.Exception.Message)" "ERROR"
         
         $sshInstructions = @"
-Unable to establish SSH connection. Please follow these steps:
+Unable to establish SSH connection.
+Please follow these steps:
 
 1. Enable SSH in LibreELEC:
    - Open Kodi
@@ -198,7 +199,8 @@ Unable to establish SSH connection. Please follow these steps:
    - Temporarily disable your firewall
    - Make sure you have the latest LibreELEC version
 
-Need help? Visit the LibreELEC SSH guide online.
+Need help?
+Visit the LibreELEC SSH guide online.
 "@
 
         [System.Windows.Forms.MessageBox]::Show(
@@ -218,11 +220,11 @@ function Update-Progress {
         [string]$Status
     )
     
-    $configProgress.Value = $PercentComplete
-    $progressLabel.Text = "$Status ($PercentComplete%)"
+    $script:configProgress.Value = $PercentComplete
+    $script:progressLabel.Text = "$Status ($PercentComplete%)"
     
     # Smooth animation
-    $form.Refresh()
+    $script:form.Refresh()
     Start-Sleep -Milliseconds 50
 }
 
@@ -285,23 +287,28 @@ function Apply-Configuration {
     try {
         # Always save all settings first
         $allSettings = @{
-            IP = $ipTextBox.Text
-            Username = $userTextBox.Text
-            Password = $passTextBox.Text
-            Version = $versionCombo.SelectedItem
-            PCIe = $pcieCombo.SelectedItem
-            DAC = $dacCheckbox.Checked
+            IP = $script:ipTextBox.Text
+            Username = $script:userTextBox.Text
+            Password = $script:passTextBox.Text
+            Version = $script:versionCombo.SelectedItem
+            PCIe = $script:pcieCombo.SelectedItem
+            DAC = $script:dacCheckbox.Checked
+        }
+        $connectionSettings = @{ # Define connectionSettings here for Apply-Configuration
+            IP = $script:ipTextBox.Text
+            Username = $script:userTextBox.Text
+            Password = $script:passTextBox.Text
         }
         Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         Log-Message "Settings saved to $SETTINGS_FILE" "SUCCESS"
 
         # Create SSH session with retry logic
-        $securePass = ConvertTo-SecureString $passTextBox.Text -AsPlainText -Force
-        $cred = New-Object System.Management.Automation.PSCredential ($userTextBox.Text, $securePass)
+        $securePass = ConvertTo-SecureString $script:passTextBox.Text -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ($script:userTextBox.Text, $securePass)
         
         $sshParams = @{
-            ComputerName = $ipTextBox.Text
+            ComputerName = $script:ipTextBox.Text
             Credential = $cred
             AcceptKey = $true
             ErrorAction = 'Stop'
@@ -323,7 +330,8 @@ function Apply-Configuration {
             catch {
                 Log-Message "Failed to establish SSH connection: $($_.Exception.Message)" "ERROR"
                 [System.Windows.Forms.MessageBox]::Show(
-                    "Failed to establish SSH connection. Please test your connection first.",
+                    "Failed to establish SSH connection.
+Please test your connection first.",
                     "Connection Error",
                     [System.Windows.Forms.MessageBoxButtons]::OK,
                     [System.Windows.Forms.MessageBoxIcon]::Error
@@ -436,8 +444,8 @@ function Apply-Configuration {
             )
 
             # Add NVMe settings if applicable
-            if ($versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
-                $pcieGen = switch ($pcieCombo.SelectedItem) {
+            if ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
+                $pcieGen = switch ($script:pcieCombo.SelectedItem) {
                     "Gen 1" { "gen1" }
                     "Gen 2" { "gen2" }
                     "Gen 3" { "gen3" }
@@ -447,13 +455,14 @@ function Apply-Configuration {
             }
 
             # Add DAC settings if applicable
-            if ($dacCheckbox.Checked) {
+            if ($script:dacCheckbox.Checked) {
                 $configSettings += "dtoverlay=hifiberry-dacplus,slave"
             }
 
             # Check existing config settings
             Update-Progress -PercentComplete 50 -Status "Verifying current configuration"
             $missingSettings = @()
+            $configChanged = $false # Initialize here
             foreach ($setting in $configSettings) {
                 $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -qF -- `"$setting`" /flash/config.txt"
                 if ($checkResult.ExitStatus -ne 0) {
@@ -470,7 +479,8 @@ function Apply-Configuration {
             
             # Set EEPROM updates based on version
             $missingEepromUpdates = @()
-            $eepromUpdates = if ($versionCombo.SelectedItem -eq "Argon V3 Normal") {
+            $eepromChanged = $false # Initialize here
+            $eepromUpdates = if ($script:versionCombo.SelectedItem -eq "Argon V3 Normal") {
                 @("PSU_MAX_CURRENT=5000")
             } else {
                 @(
@@ -558,7 +568,8 @@ mount -o remount,ro /flash
 
             # Ask for reboot only if changes were made
             $rebootResult = [System.Windows.Forms.MessageBox]::Show(
-                "Configuration has been applied successfully! A reboot is required for changes to take effect. Would you like to reboot now?",
+                "Configuration has been applied successfully!
+A reboot is required for changes to take effect. Would you like to reboot now?",
                 "Configuration Complete",
                 [System.Windows.Forms.MessageBoxButtons]::YesNo,
                 [System.Windows.Forms.MessageBoxIcon]::Question
@@ -568,7 +579,8 @@ mount -o remount,ro /flash
                 Log-Message "Rebooting device..." "INFO"
                 Invoke-SSHCommand -SessionId $session.SessionId -Command "reboot"
             } else {
-                Log-Message "Reboot skipped. Please remember to reboot your device later." "WARNING"
+                Log-Message "Reboot skipped.
+Please remember to reboot your device later." "WARNING"
             }
             
             Update-Progress -PercentComplete 100 -Status "Configuration complete"
@@ -611,7 +623,8 @@ mount -o remount,ro /flash
         Update-Progress -PercentComplete 0 -Status "Configuration failed"
         Log-Message "Fatal error in configuration: $($_.Exception.Message)" "ERROR"
         [System.Windows.Forms.MessageBox]::Show(
-            "A fatal error occurred during configuration. Please check the log for details.",
+            "A fatal error occurred during configuration.
+Please check the log for details.",
             "Fatal Error",
             [System.Windows.Forms.MessageBoxButtons]::OK,
             [System.Windows.Forms.MessageBoxIcon]::Error
@@ -640,16 +653,16 @@ function Test-CurrentSettings {
             return
         }
         
-        [cite_start]Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force [cite: 88, 89]
-        
+        Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
+        Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         # Create SSH session
-        [cite_start]$securePass = ConvertTo-SecureString $script:passTextBox.Text -AsPlainText -Force [cite: 88]
-        [cite_start]$cred = New-Object System.Management.Automation.PSCredential ($script:userTextBox.Text, $securePass) [cite: 88]
-        [cite_start]$session = New-SSHSession -ComputerName $script:ipTextBox.Text -Credential $cred -AcceptKey [cite: 88]
+        $securePass = ConvertTo-SecureString $script:passTextBox.Text -AsPlainText -Force
+        $cred = New-Object System.Management.Automation.PSCredential ($script:userTextBox.Text, $securePass)
+        $session = New-SSHSession -ComputerName $script:ipTextBox.Text -Credential $cred -AcceptKey
 
         try {
-            [cite_start]Log-Message "Testing current configuration..." "INFO" [cite: 89]
-            [cite_start]Update-Progress -PercentComplete 20 -Status "Checking config.txt" [cite: 89]
+            Log-Message "Testing current configuration..." "INFO"
+            Update-Progress -PercentComplete 20 -Status "Checking config.txt"
 
             # Create HTML content with styling
             $htmlContent = @"
@@ -659,63 +672,63 @@ function Test-CurrentSettings {
     <title>Argon V3 - Current Configuration</title>
     <style>
         body {
-            font-family: 'Segoe UI', Arial, sans-serif; 
+            font-family: 'Segoe UI', Arial, sans-serif;
             max-width: 800px;
             margin: 20px auto;
             padding: 20px;
-            background-color: #f5f5f5; 
+            background-color: #f5f5f5;
         }
         .container {
-            background-color: white; 
+            background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         h1 {
-            color: #0078D4; 
-            text-align: center; 
+            color: #0078D4;
+            text-align: center;
             padding-bottom: 10px;
-            border-bottom: 2px solid #0078D4; 
-            margin-bottom: 30px; 
+            border-bottom: 2px solid #0078D4;
+            margin-bottom: 30px;
         }
         .section {
-            margin-bottom: 30px; 
-            padding: 15px; 
+            margin-bottom: 30px;
+            padding: 15px;
             background-color: #f8f9fa;
             border-radius: 5px;
-            border-left: 4px solid #0078D4; 
+            border-left: 4:px solid #0078D4;
         }
         .section h2 {
-            color: #2D2D2D; 
-            margin-top: 0; 
+            color: #2D2D2D;
+            margin-top: 0;
             font-size: 1.4em;
         }
         .content {
-            font-family: 'Consolas', monospace; 
-            white-space: pre-wrap; 
+            font-family: 'Consolas', monospace;
+            white-space: pre-wrap;
             padding: 10px;
             background-color: white;
             border-radius: 3px;
         }
         .status {
-            padding: 5px 10px; 
-            border-radius: 3px; 
+            padding: 5px 10px;
+            border-radius: 3px;
             display: inline-block;
             margin-top: 5px;
         }
         .success {
-            background-color: #DFF6DD; 
-            color: #107C10; 
+            background-color: #DFF6DD;
+            color: #107C10;
         }
         .warning {
-            background-color: #FFF4CE; 
-            color: #805600; 
+            background-color: #FFF4CE;
+            color: #805600;
         }
         .footer {
-            text-align: center; 
-            margin-top: 30px; 
-            color: #666; 
-            font-size: 0.9em; 
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -734,11 +747,11 @@ function Test-CurrentSettings {
 $(($configContent.Output | Where-Object { $_.Trim() -ne "" }) -join "`n")
             </div>
         </div>
-"@ 
+"@
             }
 
             # Check EEPROM settings
-            Update-Progress -PercentComplete 50 -Status "Checking EEPROM" 
+            Update-Progress -PercentComplete 50 -Status "Checking EEPROM"
             $eepromContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config"
             if ($eepromContent.ExitStatus -eq 0) {
                 $htmlContent += @"
@@ -748,13 +761,13 @@ $(($configContent.Output | Where-Object { $_.Trim() -ne "" }) -join "`n")
 $(($eepromContent.Output | Where-Object { $_.Trim() -ne "" -and -not $_.StartsWith("#") }) -join "`n")
             </div>
         </div>
-"@ 
+"@
             }
 
             # Check PCIe status if NVMe version is selected
             if ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
-                Update-Progress -PercentComplete 75 -Status "Checking PCIe/NVMe" 
-                $nvmeStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "lspci | grep -i nvme" 
+                Update-Progress -PercentComplete 75 -Status "Checking PCIe/NVMe"
+                $nvmeStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "lspci | grep -i nvme"
                 $htmlContent += @"
         <div class="section">
             <h2>NVME STATUS</h2>
@@ -766,21 +779,21 @@ Device Found:
 $($nvmeStatus.Output)
             </div>
             <div class="status success">NVMe device detected</div>
-"@ 
+"@
                 } else {
                     $htmlContent += @"
 No NVMe device detected
             </div>
             <div class="status warning">No NVMe device detected</div>
-"@ 
+"@
                 }
                 $htmlContent += "</div>"
             }
 
             # Check DAC status if enabled
             if ($script:dacCheckbox.Checked) {
-                Update-Progress -PercentComplete 90 -Status "Checking DAC" 
-                $dacStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "aplay -l | grep -i hifiberry" 
+                Update-Progress -PercentComplete 90 -Status "Checking DAC"
+                $dacStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "aplay -l | grep -i hifiberry"
                 $htmlContent += @"
         <div class="section">
             <h2>DAC STATUS</h2>
@@ -792,13 +805,13 @@ Device Found:
 $($dacStatus.Output)
             </div>
             <div class="status success">HiFiBerry DAC detected</div>
-"@ 
+"@
                 } else {
                     $htmlContent += @"
 No HiFiBerry DAC detected
             </div>
             <div class="status warning">No HiFiBerry DAC detected</div>
-"@ 
+"@
                 }
                 $htmlContent += "</div>"
             }
@@ -807,7 +820,7 @@ No HiFiBerry DAC detected
             $htmlContent += @"
         <div class="footer">
             Generated on $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")<br>
-            Argon V3 LibreELEC Setup v$SCRIPT_VERSION 
+            Argon V3 LibreELEC Setup v$SCRIPT_VERSION
         </div>
     </div>
 </body>
@@ -816,23 +829,23 @@ No HiFiBerry DAC detected
 
             # Save HTML to temp file and open in default browser
             $htmlFile = Join-Path $PSScriptRoot "current_settings.html"
-            [cite_start]$htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8 [cite: 115]
-            [cite_start]Start-Process $htmlFile [cite: 115]
+            $htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8
+            Start-Process $htmlFile
 
-            [cite_start]Update-Progress -PercentComplete 100 -Status "Test complete" [cite: 115]
-            [cite_start]Log-Message "Configuration test completed successfully" "SUCCESS" [cite: 115]
+            Update-Progress -PercentComplete 100 -Status "Test complete"
+            Log-Message "Configuration test completed successfully" "SUCCESS"
         }
         finally {
             if ($session) {
-                [cite_start]Remove-SSHSession -SessionId $session.SessionId [cite: 116]
+                Remove-SSHSession -SessionId $session.SessionId
             }
-            [cite_start]Start-Sleep -Seconds 2 [cite: 116]
-            [cite_start]Update-Progress -PercentComplete 0 -Status "Ready" [cite: 116]
+            Start-Sleep -Seconds 2
+            Update-Progress -PercentComplete 0 -Status "Ready"
         }
     }
     catch {
-        [cite_start]Log-Message "Error testing configuration: $($_.Exception.Message)" "ERROR" [cite: 117]
-        [cite_start]Update-Progress -PercentComplete 0 -Status "Test failed" [cite: 117]
+        Log-Message "Error testing configuration: $($_.Exception.Message)" "ERROR"
+        Update-Progress -PercentComplete 0 -Status "Test failed"
     }
 }
 
@@ -840,6 +853,12 @@ No HiFiBerry DAC detected
 $script:ipTextBox = New-Object System.Windows.Forms.TextBox
 $script:userTextBox = New-Object System.Windows.Forms.TextBox
 $script:passTextBox = New-Object System.Windows.Forms.TextBox
+$script:versionCombo = New-Object System.Windows.Forms.ComboBox # Define this here
+$script:pcieCombo = New-Object System.Windows.Forms.ComboBox   # Define this here
+$script:dacCheckbox = New-Object System.Windows.Forms.CheckBox # Define this here
+$script:configProgress = New-Object System.Windows.Forms.ProgressBar # Define this here
+$script:progressLabel = New-Object System.Windows.Forms.Label # Define this here
+
 
 # Function to load settings when the program starts
 function Load-SavedSettings {
@@ -859,29 +878,29 @@ function Load-SavedSettings {
             
             # Set connection settings
             if ($allSettings.IP) { 
-                $ipTextBox.Text = $allSettings.IP 
+                $script:ipTextBox.Text = $allSettings.IP 
                 Log-Message "Loaded IP: $($allSettings.IP)" "INFO"
             }
             if ($allSettings.Username) { 
-                $userTextBox.Text = $allSettings.Username 
+                $script:userTextBox.Text = $allSettings.Username 
                 Log-Message "Loaded Username: $($allSettings.Username)" "INFO"
             }
             if ($allSettings.Password) { 
-                $passTextBox.Text = $allSettings.Password 
+                $script:passTextBox.Text = $allSettings.Password 
                 Log-Message "Loaded Password: ********" "INFO"
             }
             
             # Set Argon settings
             if ($allSettings.Version) {
-                $versionCombo.SelectedItem = $allSettings.Version
+                $script:versionCombo.SelectedItem = $allSettings.Version
                 Log-Message "Loaded Version: $($allSettings.Version)" "INFO"
             }
             if ($allSettings.PCIe) {
-                $pcieCombo.SelectedItem = $allSettings.PCIe
+                $script:pcieCombo.SelectedItem = $allSettings.PCIe
                 Log-Message "Loaded PCIe: $($allSettings.PCIe)" "INFO"
             }
             if ($null -ne $allSettings.DAC) {
-                $dacCheckbox.Checked = $allSettings.DAC
+                $script:dacCheckbox.Checked = $allSettings.DAC
                 Log-Message "Loaded DAC setting: $($allSettings.DAC)" "INFO"
             }
             
@@ -893,15 +912,26 @@ function Load-SavedSettings {
     } else {
         Log-Message "No settings file found in Documents. Using defaults." "INFO"
         # Set defaults if no settings file exists
-        $userTextBox.Text = "root"
-        $passTextBox.Text = "libreelec"
-        $versionCombo.SelectedIndex = 0
-        $pcieCombo.SelectedIndex = 0
-        $dacCheckbox.Checked = $false
+        $script:userTextBox.Text = "root"
+        $script:passTextBox.Text = "libreelec"
+        # Ensure combo boxes are initialized before setting SelectedIndex
+        # This part assumes these controls are already created as part of the form
+        # creation process later in the script. If not, it could cause issues.
+        # For a self-contained Load-SavedSettings, they should ideally be passed in or be global.
+        # However, following the original script structure, they are global ($script:).
+        if ($script:versionCombo.Items.Count -gt 0) {
+            $script:versionCombo.SelectedIndex = 0
+        }
+        if ($script:pcieCombo.Items.Count -gt 0) {
+            $script:pcieCombo.SelectedIndex = 0
+        }
+        $script:dacCheckbox.Checked = $false
     }
 
-    # Force UI update
-    $form.Update()
+    # Force UI update - $form must be defined for this to work.
+    if ($script:form) {
+        $script:form.Update()
+    }
 }
 
 # Check for SSH module and install if missing
@@ -927,7 +957,6 @@ function Ensure-SSHModule {
                 Install-Module -Name Posh-SSH -Force -Scope CurrentUser
                 Import-Module -Name Posh-SSH -Force
                 Log-Message "SSH module installed and imported successfully" "SUCCESS"
-
                 [System.Windows.Forms.MessageBox]::Show(
                     "Posh-SSH module has been installed successfully!",
                     "Installation Complete",
@@ -964,85 +993,18 @@ function Ensure-SSHModule {
 }
 
 # Create the main form
-$form = New-Object System.Windows.Forms.Form
-$form.Text = "Argon V3 - LibreELEC Setup"
-$form.Size = New-Object System.Drawing.Size(800, $defaultHeight)
-$form.StartPosition = "CenterScreen"
-$form.BackColor = [System.Drawing.Color]::White
-$form.MaximumSize = New-Object System.Drawing.Size(1200, $maxHeight)
-$form.MinimumSize = New-Object System.Drawing.Size(800, 500)
-$form.MaximizeBox = $false
-$form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
-
-# Function to load settings when the program starts
-function Load-SavedSettings {
-    Log-Message "Starting to load saved settings from Documents folder" "INFO"
-    
-    # Ensure settings directory exists
-    if (-not (Test-Path $PSScriptRoot)) {
-        New-Item -ItemType Directory -Force -Path $PSScriptRoot
-        Log-Message "Created settings directory: $PSScriptRoot" "INFO"
-    }
-    
-    # Load settings from Documents
-    if (Test-Path $SETTINGS_FILE) {
-        try {
-            $allSettings = Import-Clixml -Path $SETTINGS_FILE
-            Log-Message "Found settings file: $SETTINGS_FILE" "INFO"
-            
-            # Set connection settings
-            if ($allSettings.IP) { 
-                $ipTextBox.Text = $allSettings.IP 
-                Log-Message "Loaded IP: $($allSettings.IP)" "INFO"
-            }
-            if ($allSettings.Username) { 
-                $userTextBox.Text = $allSettings.Username 
-                Log-Message "Loaded Username: $($allSettings.Username)" "INFO"
-            }
-            if ($allSettings.Password) { 
-                $passTextBox.Text = $allSettings.Password 
-                Log-Message "Loaded Password: ********" "INFO"
-            }
-            
-            # Set Argon settings
-            if ($allSettings.Version) {
-                $versionCombo.SelectedItem = $allSettings.Version
-                Log-Message "Loaded Version: $($allSettings.Version)" "INFO"
-            }
-            if ($allSettings.PCIe) {
-                $pcieCombo.SelectedItem = $allSettings.PCIe
-                Log-Message "Loaded PCIe: $($allSettings.PCIe)" "INFO"
-            }
-            if ($null -ne $allSettings.DAC) {
-                $dacCheckbox.Checked = $allSettings.DAC
-                Log-Message "Loaded DAC setting: $($allSettings.DAC)" "INFO"
-            }
-            
-            Log-Message "Successfully loaded all settings from Documents" "SUCCESS"
-        }
-        catch {
-            Log-Message "Error loading settings from Documents: $($_.Exception.Message)" "ERROR"
-        }
-    } else {
-        Log-Message "No settings file found in Documents. Using defaults." "INFO"
-        # Set defaults if no settings file exists
-        $userTextBox.Text = "root"
-        $passTextBox.Text = "libreelec"
-        $versionCombo.SelectedIndex = 0
-        $pcieCombo.SelectedIndex = 0
-        $dacCheckbox.Checked = $false
-    }
-
-    # Force UI update
-    $form.Update()
-}
+$script:form = New-Object System.Windows.Forms.Form
+$script:form.Text = "Argon V3 - LibreELEC Setup"
+$script:form.Size = New-Object System.Drawing.Size(800, $defaultHeight)
+$script:form.StartPosition = "CenterScreen"
+$script:form.BackColor = [System.Drawing.Color]::White
+$script:form.MaximumSize = New-Object System.Drawing.Size(1200, $maxHeight)
+$script:form.MinimumSize = New-Object System.Drawing.Size(800, 500)
+$script:form.MaximizeBox = $false
+$script:form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 
 # Add form load event to load settings
-$form.Add_Shown({
-    Log-Message "Form shown, loading settings from Documents..." "INFO"
-    Load-SavedSettings
-    Log-Message "Settings load complete" "INFO"
-})
+$script:form.Add_Shown({ Log-Message "Form shown, loading settings from Documents..." "INFO"; Load-SavedSettings; Log-Message "Settings load complete" "INFO" })
 
 # Create main TableLayoutPanel
 $mainLayout = New-Object System.Windows.Forms.TableLayoutPanel
@@ -1051,7 +1013,6 @@ $mainLayout.ColumnCount = 1
 $mainLayout.RowCount = 4
 $mainLayout.Padding = New-Object System.Windows.Forms.Padding(20)
 $mainLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 100)))
-
 # Set row heights
 $mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 80))) # Header
 $mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 150))) # Connection
@@ -1062,14 +1023,12 @@ $mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Wind
 $headerPanel = New-Object System.Windows.Forms.Panel
 $headerPanel.BackColor = $THEME_PRIMARY
 $headerPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-
 $headerLabel = New-Object System.Windows.Forms.Label
 $headerLabel.Text = "Argon V3 - LibreELEC Setup"
 $headerLabel.ForeColor = [System.Drawing.Color]::White
 $headerLabel.Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
 $headerLabel.Dock = [System.Windows.Forms.DockStyle]::Fill
 $headerLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-
 $headerPanel.Controls.Add($headerLabel)
 $mainLayout.Controls.Add($headerPanel, 0, 0)
 
@@ -1084,31 +1043,25 @@ $ipLabel = New-Object System.Windows.Forms.Label
 $ipLabel.Text = "IP Address:"
 $ipLabel.Location = New-Object System.Drawing.Point(20, 30)
 $ipLabel.AutoSize = $true
-
-$ipTextBox = New-Object System.Windows.Forms.TextBox
-$ipTextBox.Location = New-Object System.Drawing.Point(150, 30)
-$ipTextBox.Size = New-Object System.Drawing.Size(200, 25)
+$script:ipTextBox.Location = New-Object System.Drawing.Point(150, 30)
+$script:ipTextBox.Size = New-Object System.Drawing.Size(200, 25)
 
 $userLabel = New-Object System.Windows.Forms.Label
 $userLabel.Text = "Username:"
 $userLabel.Location = New-Object System.Drawing.Point(20, 65)
 $userLabel.AutoSize = $true
-
-$userTextBox = New-Object System.Windows.Forms.TextBox
-$userTextBox.Location = New-Object System.Drawing.Point(150, 65)
-$userTextBox.Size = New-Object System.Drawing.Size(200, 25)
-$userTextBox.Text = "root"
+$script:userTextBox.Location = New-Object System.Drawing.Point(150, 65)
+$script:userTextBox.Size = New-Object System.Drawing.Size(200, 25)
+$script:userTextBox.Text = "root"
 
 $passLabel = New-Object System.Windows.Forms.Label
 $passLabel.Text = "Password:"
 $passLabel.Location = New-Object System.Drawing.Point(20, 100)
 $passLabel.AutoSize = $true
-
-$passTextBox = New-Object System.Windows.Forms.TextBox
-$passTextBox.Location = New-Object System.Drawing.Point(150, 100)
-$passTextBox.Size = New-Object System.Drawing.Size(200, 25)
-$passTextBox.PasswordChar = '*'
-$passTextBox.Text = "libreelec"
+$script:passTextBox.Location = New-Object System.Drawing.Point(150, 100)
+$script:passTextBox.Size = New-Object System.Drawing.Size(200, 25)
+$script:passTextBox.PasswordChar = '*'
+$script:passTextBox.Text = "libreelec"
 
 $testButton = New-Object System.Windows.Forms.Button
 $testButton.Text = "Test Connection"
@@ -1117,8 +1070,7 @@ $testButton.Size = New-Object System.Drawing.Size(150, 30)
 $testButton.BackColor = $THEME_PRIMARY
 $testButton.ForeColor = [System.Drawing.Color]::White
 $testButton.Add_Click({ Test-SSHConnection })
-
-$connectionGroup.Controls.AddRange(@($ipLabel, $ipTextBox, $userLabel, $userTextBox, $passLabel, $passTextBox, $testButton))
+$connectionGroup.Controls.AddRange(@($ipLabel, $script:ipTextBox, $userLabel, $script:userTextBox, $passLabel, $script:passTextBox, $testButton))
 $mainLayout.Controls.Add($connectionGroup, 0, 1)
 
 # Config Group
@@ -1132,187 +1084,113 @@ $versionLabel = New-Object System.Windows.Forms.Label
 $versionLabel.Text = "Argon Version:"
 $versionLabel.Location = New-Object System.Drawing.Point(20, 30)
 $versionLabel.AutoSize = $true
-
-$versionCombo = New-Object System.Windows.Forms.ComboBox
-$versionCombo.Location = New-Object System.Drawing.Point(150, 30)
-$versionCombo.Size = New-Object System.Drawing.Size(200, 25)
-$versionCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-$versionCombo.Items.AddRange(@("Argon V3 Normal", "Argon V3 with NVMe"))
+$script:versionCombo.Location = New-Object System.Drawing.Point(150, 30)
+$script:versionCombo.Size = New-Object System.Drawing.Size(200, 25)
+$script:versionCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$script:versionCombo.Items.AddRange(@("Argon V3 Normal", "Argon V3 with NVMe"))
 
 $pcieLabel = New-Object System.Windows.Forms.Label
 $pcieLabel.Text = "PCIe Generation:"
 $pcieLabel.Location = New-Object System.Drawing.Point(400, 30)
 $pcieLabel.AutoSize = $true
+$script:pcieCombo.Location = New-Object System.Drawing.Point(530, 30)
+$script:pcieCombo.Size = New-Object System.Drawing.Size(150, 25)
+$script:pcieCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$script:pcieCombo.Items.AddRange(@("Gen 1", "Gen 2", "Gen 3"))
+$script:pcieCombo.Enabled = ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe")
 
-$pcieCombo = New-Object System.Windows.Forms.ComboBox
-$pcieCombo.Location = New-Object System.Drawing.Point(530, 30)
-$pcieCombo.Size = New-Object System.Drawing.Size(150, 25)
-$pcieCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-$pcieCombo.Items.AddRange(@("Gen 1", "Gen 2", "Gen 3"))
+$script:versionCombo.Add_SelectedIndexChanged({
+    $script:pcieCombo.Enabled = ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe")
+})
 
 $dacCheckbox = New-Object System.Windows.Forms.CheckBox
-$dacCheckbox.Text = "Enable Argon Hi-Fi DAC"
-$dacCheckbox.Location = New-Object System.Drawing.Point(400, 65)
+$dacCheckbox.Text = "Enable HiFiBerry DAC"
+$dacCheckbox.Location = New-Object System.Drawing.Point(20, 70)
 $dacCheckbox.AutoSize = $true
 
-$configGroup.Controls.AddRange(@($versionLabel, $versionCombo, $pcieLabel, $pcieCombo, $dacCheckbox))
-$mainLayout.Controls.Add($configGroup, 0, 2)
-
-# Bottom Panel (Buttons and Progress)
-$bottomPanel = New-Object System.Windows.Forms.TableLayoutPanel
-$bottomPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$bottomPanel.ColumnCount = 2
-$bottomPanel.RowCount = 2
-$bottomPanel.Padding = New-Object System.Windows.Forms.Padding(20)
-$bottomPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
-$bottomPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Buttons
-$bottomPanel.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 40))) # Progress bar
-
-# Progress Panel
-$progressPanel = New-Object System.Windows.Forms.Panel
-$progressPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$progressPanel.Height = 15  # Reduced height
-$progressPanel.Padding = New-Object System.Windows.Forms.Padding(20, 0, 20, 0)  # Minimal vertical padding
-
-# Progress Bar Container (for layering)
-$progressContainer = New-Object System.Windows.Forms.Panel
-$progressContainer.Dock = [System.Windows.Forms.DockStyle]::Fill
-$progressContainer.BackColor = [System.Drawing.Color]::FromArgb(240, 240, 240)
-$progressContainer.Padding = New-Object System.Windows.Forms.Padding(0)
-
-# Progress Bar
-$configProgress = New-Object System.Windows.Forms.ProgressBar
-$configProgress.Size = New-Object System.Drawing.Size(700, 12)  # Reduced height
-$configProgress.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
-$configProgress.Value = 0
-$configProgress.Dock = [System.Windows.Forms.DockStyle]::Fill
-$configProgress.ForeColor = $THEME_PRIMARY
-$configProgress.BackColor = [System.Drawing.Color]::FromArgb(230, 230, 230)
-
-# Progress Label (overlaid on progress bar)
-$progressLabel = New-Object System.Windows.Forms.Label
-$progressLabel.Text = "Ready"
-$progressLabel.BackColor = [System.Drawing.Color]::Transparent
-$progressLabel.ForeColor = [System.Drawing.Color]::White
-$progressLabel.Font = New-Object System.Drawing.Font("Segoe UI", 6)  # Smaller font
-$progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-$progressLabel.Dock = [System.Windows.Forms.DockStyle]::Fill
-$progressLabel.UseCompatibleTextRendering = $true
-
-# Add controls to container
-$progressContainer.Controls.Add($configProgress)
-$progressContainer.Controls.Add($progressLabel)
-$progressPanel.Controls.Add($progressContainer)
-
-# Apply Button
 $applyButton = New-Object System.Windows.Forms.Button
 $applyButton.Text = "Apply Configuration"
+$applyButton.Location = New-Object System.Drawing.Point(400, 70)
 $applyButton.Size = New-Object System.Drawing.Size(150, 30)
 $applyButton.BackColor = $THEME_PRIMARY
 $applyButton.ForeColor = [System.Drawing.Color]::White
 $applyButton.Add_Click({ Apply-Configuration })
 
-# Test Settings Button
-$testSettingsButton = New-Object System.Windows.Forms.Button
-$testSettingsButton.Text = "Test Current Settings"
-$testSettingsButton.Size = New-Object System.Drawing.Size(150, 30)
-$testSettingsButton.BackColor = $THEME_SECONDARY
-$testSettingsButton.ForeColor = [System.Drawing.Color]::White
-$testSettingsButton.Add_Click({ Test-CurrentSettings })
+$configGroup.Controls.AddRange(@($versionLabel, $script:versionCombo, $pcieLabel, $script:pcieCombo, $dacCheckbox, $applyButton))
+$mainLayout.Controls.Add($configGroup, 0, 2)
 
-# Show Log Button
-$showLogButton = New-Object System.Windows.Forms.Button
-$showLogButton.Text = "Show Log"
-$showLogButton.Size = New-Object System.Drawing.Size(150, 30)
-$showLogButton.BackColor = $THEME_SECONDARY
-$showLogButton.ForeColor = [System.Drawing.Color]::White
-$showLogButton.Add_Click({ 
-    if (Test-Path $LOG_FILE) {
-        Start-Process $LOG_FILE
+# Log and Progress Panel
+$logPanel = New-Object System.Windows.Forms.Panel
+$logPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
+$logPanel.Padding = New-Object System.Windows.Forms.Padding(10)
+$logPanel.BackColor = $CurrentTheme.LogBackground
+
+$logTextBox = New-Object System.Windows.Forms.RichTextBox
+$logTextBox.Dock = [System.Windows.Forms.DockStyle]::Fill
+$logTextBox.BackColor = $CurrentTheme.LogBackground
+$logTextBox.ForeColor = $CurrentTheme.LogText
+$logTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
+$logTextBox.ReadOnly = $true
+$logTextBox.ScrollBars = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
+
+# Function to update log textbox
+function Update-LogTextBox {
+    # Check if the RichTextBox control exists before trying to update it
+    if ($script:logTextBox.InvokeRequired) {
+        $script:logTextBox.Invoke([System.Action[string]]{ 
+            param($message)
+            $script:logTextBox.AppendText("$message`n")
+            $script:logTextBox.ScrollToCaret()
+        }, $logMessage) # Use $logMessage from Log-Message function
     } else {
-        [System.Windows.Forms.MessageBox]::Show(
-            "No log file found for this session.`n`nLog files are stored in:`n$LOG_FOLDER",
-            "View Log",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Information
-        )
+        $script:logTextBox.AppendText("$logMessage`n")
+        $script:logTextBox.ScrollToCaret()
     }
-})
+}
+# Redirect console output to logTextBox (optional, for real-time updates)
+# You might need to run PowerShell with -STA (Single Threaded Apartment) for this to work perfectly with GUI
+# [Console]::SetOut((New-Object System.IO.StreamWriter -ArgumentList $logTextBox.Handle, [Text.Encoding]::UTF8))
+# For this script, we're using a custom Log-Message function which appends to a file and updates the textbox.
 
-# Center buttons in their cells
-$bottomPanel.Controls.Add($applyButton, 0, 0)
-$bottomPanel.Controls.Add($testSettingsButton, 1, 0)
-$bottomPanel.Controls.Add($showLogButton, 0, 1)
-$bottomPanel.Controls.Add($progressPanel, 1, 1)
+# Progress bar and label
+$script:configProgress = New-Object System.Windows.Forms.ProgressBar
+$script:configProgress.Dock = [System.Windows.Forms.DockStyle]::Bottom
+$script:configProgress.Height = 20
+$script:configProgress.Maximum = 100
+$script:configProgress.Step = 1
 
-$mainLayout.Controls.Add($bottomPanel, 0, 3)
+$script:progressLabel = New-Object System.Windows.Forms.Label
+$script:progressLabel.Dock = [System.Windows.Forms.DockStyle]::Bottom
+$script:progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+$script:progressLabel.Text = "Ready (0%)"
+$script:progressLabel.ForeColor = $CurrentTheme.Text
+
+$logPanel.Controls.Add($logTextBox)
+$logPanel.Controls.Add($script:progressLabel)
+$logPanel.Controls.Add($script:configProgress)
+$mainLayout.Controls.Add($logPanel, 0, 3)
 
 # Footer Panel
 $footerPanel = New-Object System.Windows.Forms.Panel
 $footerPanel.Dock = [System.Windows.Forms.DockStyle]::Bottom
-$footerPanel.Height = 30
+$footerPanel.Height = 40
 $footerPanel.BackColor = $THEME_SECONDARY
+$footerPanel.Padding = New-Object System.Windows.Forms.Padding(10,0,10,0) # Left, Top, Right, Bottom
 
-# Create a TableLayoutPanel for better control
 $footerLayout = New-Object System.Windows.Forms.TableLayoutPanel
 $footerLayout.Dock = [System.Windows.Forms.DockStyle]::Fill
+$footerLayout.ColumnCount = 3
 $footerLayout.RowCount = 1
-$footerLayout.ColumnCount = 4  # Changed to 4 to add theme toggle
-$footerLayout.Padding = New-Object System.Windows.Forms.Padding(5, 0, 5, 0)
+$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
+$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 34)))
+$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
 
-# Set column styles
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 15)))
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 50)))
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 15)))
-
-# Theme Toggle Button (left column)
+# Theme Toggle (left column)
 $themeToggle = New-Object System.Windows.Forms.Button
-$themeToggle.Text = "Dark"
-$themeToggle.Font = New-Object System.Drawing.Font("Segoe UI", 9)
-$themeToggle.ForeColor = $THEME_TEXT
-$themeToggle.BackColor = $THEME_SECONDARY
-$themeToggle.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$themeToggle.FlatAppearance.BorderSize = 0
+$themeToggle.Text = "Toggle Theme"
 $themeToggle.Dock = [System.Windows.Forms.DockStyle]::Fill
-$themeToggle.Cursor = [System.Windows.Forms.Cursors]::Hand
-$footerLayout.Controls.Add($themeToggle, 0, 0)
-
-# Function to apply theme
-function Apply-Theme {
-    param (
-        [hashtable]$Theme
-    )
-    
-    $form.BackColor = $Theme.Background
-    $form.ForeColor = $Theme.Text
-    
-    # Update group boxes
-    $connectionGroup.BackColor = $Theme.GroupBackground
-    $connectionGroup.ForeColor = $Theme.Text
-    $configGroup.BackColor = $Theme.GroupBackground
-    $configGroup.ForeColor = $Theme.Text
-    
-    # Update labels
-    $ipLabel.ForeColor = $Theme.Text
-    $userLabel.ForeColor = $Theme.Text
-    $passLabel.ForeColor = $Theme.Text
-    $versionLabel.ForeColor = $Theme.Text
-    $pcieLabel.ForeColor = $Theme.Text
-    $dacCheckbox.ForeColor = $Theme.Text
-    
-    # Update progress container
-    $progressContainer.BackColor = $Theme.ProgressBackground
-    
-    # Update theme toggle text
-    $themeToggle.Text = if ($Theme -eq $DarkTheme) { "Light" } else { "Dark" }
-    
-    # Store current theme
-    $script:CurrentTheme = $Theme
-}
-
-# Theme toggle click handler
+$themeToggle.BackColor = $THEME_PRIMARY
+$themeToggle.ForeColor = [System.Drawing.Color]::White
 $themeToggle.Add_Click({
     if ($CurrentTheme -eq $LightTheme) {
         Apply-Theme $DarkTheme
@@ -1320,6 +1198,7 @@ $themeToggle.Add_Click({
         Apply-Theme $LightTheme
     }
 })
+$footerLayout.Controls.Add($themeToggle, 0, 0)
 
 # Copyright Label (center column)
 $copyrightLabel = New-Object System.Windows.Forms.Label
@@ -1343,25 +1222,55 @@ $footerLayout.Controls.Add($versionLabel, 2, 0)
 $footerPanel.Controls.Add($footerLayout)
 
 # Add footer to form
-$form.Controls.Add($footerPanel)
+$script:form.Controls.Add($footerPanel)
 
 # Add layouts to form
-$form.Controls.Add($mainLayout) | Out-Null
-$form.Controls.Add($footerPanel) | Out-Null
+$script:form.Controls.Add($mainLayout) | Out-Null
+$script:form.Controls.Add($footerPanel) | Out-Null
 
 # Check for SSH module before showing form
 if (!(Ensure-SSHModule)) {
-    $form.Close()
+    $script:form.Close()
     return
 }
 
 # Show the form
-$null = $form.ShowDialog()
+$null = $script:form.ShowDialog()
 
 # Apply initial theme
 Apply-Theme $LightTheme
 
 # Form height adjustments
-$form.Size = New-Object System.Drawing.Size(800, 600) # Reduced height since we removed the log UI
-$form.MinimumSize = New-Object System.Drawing.Size(800, 600)
-$form.MaximumSize = New-Object System.Drawing.Size(1200, 600)
+$script:form.Size = New-Object System.Drawing.Size(800, $defaultHeight)
+
+# Theme application function
+function Apply-Theme {
+    param(
+        [hashtable]$Theme
+    )
+    $CurrentTheme = $Theme
+    $script:form.BackColor = $Theme.Background
+    $headerPanel.BackColor = $THEME_PRIMARY
+    $headerLabel.ForeColor = $THEME_TEXT
+    $connectionGroup.ForeColor = $Theme.Text
+    $ipLabel.ForeColor = $Theme.Text
+    $userLabel.ForeColor = $Theme.Text
+    $passLabel.ForeColor = $Theme.Text
+    $testButton.BackColor = $THEME_PRIMARY
+    $testButton.ForeColor = $THEME_TEXT
+    $configGroup.ForeColor = $Theme.Text
+    $versionLabel.ForeColor = $Theme.Text
+    $pcieLabel.ForeColor = $Theme.Text
+    $dacCheckbox.ForeColor = $Theme.Text
+    $applyButton.BackColor = $THEME_PRIMARY
+    $applyButton.ForeColor = $THEME_TEXT
+    $logPanel.BackColor = $Theme.LogBackground
+    $logTextBox.BackColor = $Theme.LogBackground
+    $logTextBox.ForeColor = $Theme.LogText
+    $script:progressLabel.ForeColor = $Theme.Text
+    $footerPanel.BackColor = $THEME_SECONDARY
+    $themeToggle.BackColor = $THEME_PRIMARY
+    $themeToggle.ForeColor = $THEME_TEXT
+    $copyrightLabel.ForeColor = $THEME_TEXT
+    $versionLabel.ForeColor = $THEME_TEXT
+}
