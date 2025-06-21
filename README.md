@@ -8,6 +8,45 @@
 
 ![image](https://github.com/user-attachments/assets/17a5e950-129e-4d81-857d-a78d6892bf48)
 
+## 💖 Support a Good Cause
+
+If you find this project helpful, please consider donating to a charity instead of supporting me directly. Your generosity can help make the world a better place — and I’d love to recognize your contribution!
+
+### ✅ How It Works
+
+1. **Donate directly** to any charity you care about (see suggestions below).
+2. **Send proof of donation** (screenshot or email receipt) to `your-email@example.com` *(or use [this form](#) if you prefer)*.
+3. I’ll add your name (or GitHub handle) to the **Sponsors** section below as a small token of appreciation.
+
+> 💡 I do not handle any money. Your donation goes **directly to the charity**.
+
+---
+
+### 🏥 Suggested Charities
+
+Feel free to donate to any organization you trust. These are just suggestions:
+
+- [Doctors Without Borders](https://donate.doctorswithoutborders.org/)
+- [UNICEF](https://www.unicef.org/donate)
+- [The Water Project](https://thewaterproject.org/donate)
+- [World Central Kitchen](https://wck.org/donate)
+
+---
+
+## 🙌 Donor Recognition
+
+Thank you to these generous supporters:
+
+| Sponsor          | Charity Supported         |
+|------------------|---------------------------|
+| `@johndoe`       | Doctors Without Borders   |
+| `anonymous`      | The Water Project         |
+| `@you?`          | Your choice!              |
+
+---
+
+If you donate and want to be credited here, just let me know!
+
 
 ## 📝 Description
 
