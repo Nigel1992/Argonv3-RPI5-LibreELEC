@@ -12,6 +12,9 @@
 
 This project is free — if you find it valuable, please consider donating to a good cause instead.
 
+Why? Because this project was built to help people, and there’s no better way to pay that forward than by supporting others in need. Whether it's providing clean water, funding medical aid, or fighting climate change, your donation can make a real difference.
+
+
 ### ✅ How It Works
 
 1. **Donate directly** to any charity you care about (see suggestions below).
