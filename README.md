@@ -6,12 +6,11 @@
 [![PowerShell](https://img.shields.io/badge/powershell-%3E%3D5.1-blue)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
-<details>
-  
+<details>  
   <summary>Click to reveal image of GUI</summary>
+  
 ![image](https://github.com/user-attachments/assets/56f4bb01-f9bc-49b9-9de4-7ba3f9f8ace2)
 
-  
 </details>
 
 <details>
