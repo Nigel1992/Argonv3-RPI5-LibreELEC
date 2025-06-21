@@ -15,7 +15,7 @@ This project is free — if you find it valuable, please consider donating to a 
 ### ✅ How It Works
 
 1. **Donate directly** to any charity you care about (see suggestions below).
-2. **Send proof of donation** (screenshot or receipt) to <a href="mailto:thedjskywalker&#64;gmail&#46;com">thedjskywalker&#64;gmail&#46;com</a>*.
+2. **Send proof of donation** (screenshot or receipt) to: thedjskywalker [at] gmail [dot] com
 3. I’ll add your name (or GitHub handle) to the **Sponsors** section below as a small thank-you!
 
 > 💡 I do not handle any money. Your donation goes **directly to the charity**.
