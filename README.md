@@ -6,7 +6,14 @@
 [![PowerShell](https://img.shields.io/badge/powershell-%3E%3D5.1-blue)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
+<details>
+  <summary>Click to reveal image</summary>
+
 ![image](https://github.com/user-attachments/assets/cd12fd4d-a54b-423c-982c-2fa4f268fbc7)
+
+</details>
+
+
 
 
 ## 🌍 Donate to Charity Instead of Me
