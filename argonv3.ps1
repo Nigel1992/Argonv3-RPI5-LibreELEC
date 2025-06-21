@@ -43,7 +43,7 @@ $SETTINGS_FILE = Join-Path $PSScriptRoot "argon_settings.xml"
 $CONNECTION_FILE = Join-Path $PSScriptRoot "connection_settings.xml"
 $LOG_FOLDER = Join-Path $PSScriptRoot "logs"
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$LOG_FILE = Join-Path $LOG_FOLDER "argon_setup_$timestamp.log"
+$script:LOG_FILE = Join-Path $PSScriptRoot "argonv3.log"
 $SCRIPT_VERSION = "1.3.0 (06/21/2025)"
 
 # Create logs directory if it doesn't exist
@@ -74,7 +74,23 @@ function Log-Message {
     
     $timestamp = Get-Date -Format "[HH:mm:ss]"
     $logMessage = "$timestamp '$Type': $Message"
-    Add-Content -Path $LOG_FILE -Value $logMessage
+    
+    # Write to log file
+    Add-Content -Path $script:LOG_FILE -Value $logMessage
+    
+    # Update the UI
+    if ($script:logTextBox) {
+        if ($script:logTextBox.InvokeRequired) {
+            $script:logTextBox.Invoke([System.Action[string]]{ 
+                param($msg)
+                $script:logTextBox.AppendText("$msg`n")
+                $script:logTextBox.ScrollToCaret()
+            }, $logMessage)
+        } else {
+            $script:logTextBox.AppendText("$logMessage`n")
+            $script:logTextBox.ScrollToCaret()
+        }
+    }
 }
 
 function Test-SSHConnection {
@@ -1098,8 +1114,8 @@ function Apply-Theme {
         $pcieLabel.ForeColor = $Theme.Text
         $dacCheckbox.ForeColor = $Theme.Text
         $logPanel.BackColor = $Theme.LogBackground
-        $logTextBox.BackColor = $Theme.LogBackground
-        $logTextBox.ForeColor = $Theme.LogText
+        $script:logTextBox.BackColor = $Theme.LogBackground
+        $script:logTextBox.ForeColor = $Theme.LogText
         $script:progressLabel.ForeColor = $Theme.Text
         $script:configProgress.BackColor = $Theme.ProgressBackground
         
@@ -1148,12 +1164,12 @@ $mainLayout.Dock = [System.Windows.Forms.DockStyle]::Fill
 $mainLayout.ColumnCount = 1
 $mainLayout.RowCount = 4
 $mainLayout.Padding = New-Object System.Windows.Forms.Padding(20)
-$mainLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+[void]$mainLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 100)))
 # Set row heights
-$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 80))) # Header
-$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 150))) # Connection
-$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 150))) # Config
-$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100))) # Log and buttons
+[void]$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 80))) # Header
+[void]$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 150))) # Connection
+[void]$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 150))) # Config
+[void]$mainLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100))) # Log and buttons
 
 # Header Panel
 $headerPanel = New-Object System.Windows.Forms.Panel
@@ -1206,7 +1222,7 @@ $testButton.Size = New-Object System.Drawing.Size(150, 30)
 $testButton.BackColor = $THEME_PRIMARY
 $testButton.ForeColor = [System.Drawing.Color]::White
 $testButton.Add_Click({ Test-SSHConnection })
-$connectionGroup.Controls.AddRange(@($ipLabel, $script:ipTextBox, $userLabel, $script:userTextBox, $passLabel, $script:passTextBox, $testButton))
+[void]$connectionGroup.Controls.AddRange(@($ipLabel, $script:ipTextBox, $userLabel, $script:userTextBox, $passLabel, $script:passTextBox, $testButton))
 $mainLayout.Controls.Add($connectionGroup, 0, 1)
 
 # Config Group
@@ -1223,7 +1239,8 @@ $versionLabel.AutoSize = $true
 $script:versionCombo.Location = New-Object System.Drawing.Point(150, 30)
 $script:versionCombo.Size = New-Object System.Drawing.Size(200, 25)
 $script:versionCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-$script:versionCombo.Items.AddRange(@("Argon V3 Normal", "Argon V3 with NVMe"))
+$script:versionCombo.Items.Clear()
+[void]$script:versionCombo.Items.AddRange(@("Argon V3 Normal", "Argon V3 with NVMe"))
 
 $pcieLabel = New-Object System.Windows.Forms.Label
 $pcieLabel.Text = "PCIe Generation:"
@@ -1232,7 +1249,8 @@ $pcieLabel.AutoSize = $true
 $script:pcieCombo.Location = New-Object System.Drawing.Point(530, 30)
 $script:pcieCombo.Size = New-Object System.Drawing.Size(150, 25)
 $script:pcieCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
-$script:pcieCombo.Items.AddRange(@("Gen 1", "Gen 2", "Gen 3"))
+$script:pcieCombo.Items.Clear()
+[void]$script:pcieCombo.Items.AddRange(@("Gen 1", "Gen 2", "Gen 3"))
 $script:pcieCombo.Enabled = ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe")
 
 $script:versionCombo.Add_SelectedIndexChanged({
@@ -1260,7 +1278,7 @@ $testConfigButton.BackColor = $THEME_PRIMARY
 $testConfigButton.ForeColor = [System.Drawing.Color]::White
 $testConfigButton.Add_Click({ Test-CurrentSettings })
 
-$configGroup.Controls.AddRange(@($versionLabel, $script:versionCombo, $pcieLabel, $script:pcieCombo, $dacCheckbox, $applyButton, $testConfigButton))
+[void]$configGroup.Controls.AddRange(@($versionLabel, $script:versionCombo, $pcieLabel, $script:pcieCombo, $dacCheckbox, $applyButton, $testConfigButton))
 $mainLayout.Controls.Add($configGroup, 0, 2)
 
 # Log and Progress Panel
@@ -1269,32 +1287,13 @@ $logPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
 $logPanel.Padding = New-Object System.Windows.Forms.Padding(10)
 $logPanel.BackColor = $script:CurrentTheme.LogBackground
 
-$logTextBox = New-Object System.Windows.Forms.RichTextBox
-$logTextBox.Dock = [System.Windows.Forms.DockStyle]::Fill
-$logTextBox.BackColor = $script:CurrentTheme.LogBackground
-$logTextBox.ForeColor = $script:CurrentTheme.LogText
-$logTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
-$logTextBox.ReadOnly = $true
-$logTextBox.ScrollBars = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
-
-# Function to update log textbox
-function Update-LogTextBox {
-    # Check if the RichTextBox control exists before trying to update it
-    if ($script:logTextBox.InvokeRequired) {
-        $script:logTextBox.Invoke([System.Action[string]]{ 
-            param($message)
-            $script:logTextBox.AppendText("$message`n")
-            $script:logTextBox.ScrollToCaret()
-        }, $logMessage) # Use $logMessage from Log-Message function
-    } else {
-        $script:logTextBox.AppendText("$logMessage`n")
-        $script:logTextBox.ScrollToCaret()
-    }
-}
-# Redirect console output to logTextBox (optional, for real-time updates)
-# You might need to run PowerShell with -STA (Single Threaded Apartment) for this to work perfectly with GUI
-# [Console]::SetOut((New-Object System.IO.StreamWriter -ArgumentList $logTextBox.Handle, [Text.Encoding]::UTF8))
-# For this script, we're using a custom Log-Message function which appends to a file and updates the textbox.
+$script:logTextBox = New-Object System.Windows.Forms.RichTextBox
+$script:logTextBox.Dock = [System.Windows.Forms.DockStyle]::Fill
+$script:logTextBox.BackColor = $script:CurrentTheme.LogBackground
+$script:logTextBox.ForeColor = $script:CurrentTheme.LogText
+$script:logTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
+$script:logTextBox.ReadOnly = $true
+$script:logTextBox.ScrollBars = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
 
 # Progress bar and label
 $script:configProgress = New-Object System.Windows.Forms.ProgressBar
@@ -1309,7 +1308,7 @@ $script:progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCente
 $script:progressLabel.Text = "Ready (0%)"
 $script:progressLabel.ForeColor = $script:CurrentTheme.Text
 
-$logPanel.Controls.Add($logTextBox)
+$logPanel.Controls.Add($script:logTextBox)
 $logPanel.Controls.Add($script:progressLabel)
 $logPanel.Controls.Add($script:configProgress)
 $mainLayout.Controls.Add($logPanel, 0, 3)
@@ -1325,9 +1324,9 @@ $footerLayout = New-Object System.Windows.Forms.TableLayoutPanel
 $footerLayout.Dock = [System.Windows.Forms.DockStyle]::Fill
 $footerLayout.ColumnCount = 3
 $footerLayout.RowCount = 1
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 34)))
-$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
+[void]$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
+[void]$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 34)))
+[void]$footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 33)))
 
 # Theme Toggle (left column)
 $themeToggle = New-Object System.Windows.Forms.Button
