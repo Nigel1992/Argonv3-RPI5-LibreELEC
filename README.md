@@ -6,6 +6,9 @@
 [![PowerShell](https://img.shields.io/badge/powershell-%3E%3D5.1-blue)](https://github.com/PowerShell/PowerShell)
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
+![image](https://github.com/user-attachments/assets/17a5e950-129e-4d81-857d-a78d6892bf48)
+
+
 ## 📝 Description
 
 A powerful PowerShell GUI tool for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. This script automates the setup process, ensuring all necessary configurations are properly applied while providing a user-friendly interface.
