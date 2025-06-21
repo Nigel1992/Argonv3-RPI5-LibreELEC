@@ -12,7 +12,7 @@
 </details>
 <details>
   <summary>Click to reveal image of HTML Report</summary>
-![image](https://github.com/user-attachments/assets/41f627e4-5ffa-44c1-ab3c-b39fb1b818ba)
+[![image](https://github.com/user-attachments/assets/41f627e4-5ffa-44c1-ab3c-b39fb1b818ba)](https://github.com/user-attachments/assets/41f627e4-5ffa-44c1-ab3c-b39fb1b818ba)
 </details>
 
 
