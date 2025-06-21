@@ -8,15 +8,15 @@
 
 ![image](https://github.com/user-attachments/assets/17a5e950-129e-4d81-857d-a78d6892bf48)
 
-## 💖 Support a Good Cause
+## 🌍 Donate to Charity Instead of Me
 
-If you find this project helpful, please consider donating to a charity instead of supporting me directly. Your generosity can help make the world a better place — and I’d love to recognize your contribution!
+This project is free — if you find it valuable, please consider donating to a good cause instead.
 
 ### ✅ How It Works
 
 1. **Donate directly** to any charity you care about (see suggestions below).
-2. **Send proof of donation** (screenshot or email receipt) to `your-email@example.com` *(or use [this form](#) if you prefer)*.
-3. I’ll add your name (or GitHub handle) to the **Sponsors** section below as a small token of appreciation.
+2. **Send proof of donation** (screenshot or receipt) to `your-email@example.com` *(or use [this form](#) if you prefer)*.
+3. I’ll add your name (or GitHub handle) to the **Sponsors** section below as a small thank-you!
 
 > 💡 I do not handle any money. Your donation goes **directly to the charity**.
 
@@ -46,6 +46,7 @@ Thank you to these generous supporters:
 ---
 
 If you donate and want to be credited here, just let me know!
+
 
 
 ## 📝 Description
