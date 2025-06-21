@@ -34,16 +34,16 @@ $DarkTheme = @{
 # Make CurrentTheme a script-level variable
 $script:CurrentTheme = $LightTheme
 
-# Set consistent script directory
-$PSScriptRoot = "$env:USERPROFILE\Documents\ArgonSetup"
-$null = New-Item -ItemType Directory -Force -Path $PSScriptRoot
+# Set consistent settings directory
+$SETTINGS_DIR = Join-Path $env:USERPROFILE "Documents\ArgonSetup"
+$null = New-Item -ItemType Directory -Force -Path $SETTINGS_DIR
 
 # Set file paths
-$SETTINGS_FILE = Join-Path $PSScriptRoot "argon_settings.xml"
-$CONNECTION_FILE = Join-Path $PSScriptRoot "connection_settings.xml"
-$LOG_FOLDER = Join-Path $PSScriptRoot "logs"
+$SETTINGS_FILE = Join-Path $SETTINGS_DIR "argon_settings.xml"
+$CONNECTION_FILE = Join-Path $SETTINGS_DIR "connection_settings.xml"
+$LOG_FOLDER = Join-Path $SETTINGS_DIR "logs"
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$script:LOG_FILE = Join-Path $PSScriptRoot "argonv3.log"
+$script:LOG_FILE = Join-Path $SETTINGS_DIR "argonv3.log"
 $SCRIPT_VERSION = "1.3.0 (06/21/2025)"
 
 # Create logs directory if it doesn't exist
@@ -767,7 +767,8 @@ function Test-CurrentSettings {
 
             # If user wants to see the report, generate and show it
             if ($viewReport -eq [System.Windows.Forms.DialogResult]::Yes) {
-                # Create HTML content with styling
+                # Create HTML content with styling based on current theme
+                $isDarkMode = $script:CurrentTheme -eq $DarkTheme
                 $htmlContent = @"
 <!DOCTYPE html>
 <html>
@@ -779,13 +780,14 @@ function Test-CurrentSettings {
             max-width: 800px;
             margin: 20px auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: $(if ($isDarkMode) { '#1E1E1E' } else { '#f5f5f5' });
+            color: $(if ($isDarkMode) { '#E8E8E8' } else { '#2D2D2D' });
         }
         .container {
-            background-color: white;
+            background-color: $(if ($isDarkMode) { '#2D2D2D' } else { 'white' });
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         h1 {
             color: #0078D4;
@@ -797,12 +799,12 @@ function Test-CurrentSettings {
         .section {
             margin-bottom: 30px;
             padding: 15px;
-            background-color: #f8f9fa;
+            background-color: $(if ($isDarkMode) { '#363636' } else { '#f8f9fa' });
             border-radius: 5px;
             border-left: 4px solid #0078D4;
         }
         .section h2 {
-            color: #2D2D2D;
+            color: $(if ($isDarkMode) { '#E8E8E8' } else { '#2D2D2D' });
             margin-top: 0;
             font-size: 1.4em;
         }
@@ -810,8 +812,9 @@ function Test-CurrentSettings {
             font-family: 'Consolas', monospace;
             white-space: pre-wrap;
             padding: 10px;
-            background-color: white;
+            background-color: $(if ($isDarkMode) { '#1E1E1E' } else { 'white' });
             border-radius: 3px;
+            color: $(if ($isDarkMode) { '#E8E8E8' } else { '#2D2D2D' });
         }
         .status {
             padding: 5px 10px;
@@ -820,17 +823,17 @@ function Test-CurrentSettings {
             margin-top: 5px;
         }
         .success {
-            background-color: #DFF6DD;
-            color: #107C10;
+            background-color: $(if ($isDarkMode) { '#0D3F0D' } else { '#DFF6DD' });
+            color: $(if ($isDarkMode) { '#7FBA7A' } else { '#107C10' });
         }
         .warning {
-            background-color: #FFF4CE;
-            color: #805600;
+            background-color: $(if ($isDarkMode) { '#433519' } else { '#FFF4CE' });
+            color: $(if ($isDarkMode) { '#F9E3A3' } else { '#805600' });
         }
         .footer {
             text-align: center;
             margin-top: 30px;
-            color: #666;
+            color: $(if ($isDarkMode) { '#A0A0A0' } else { '#666' });
             font-size: 0.9em;
         }
     </style>
@@ -928,9 +931,27 @@ No HiFiBerry DAC detected
 "@
 
                 # Save and show HTML report
-                $htmlFile = Join-Path $PSScriptRoot "current_settings.html"
-                $htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8
-                Start-Process $htmlFile
+                try {
+                    # Ensure settings directory exists
+                    if (-not (Test-Path $SETTINGS_DIR)) {
+                        New-Item -ItemType Directory -Force -Path $SETTINGS_DIR | Out-Null
+                        Log-Message "Created settings directory for HTML report" "INFO"
+                    }
+                    
+                    $htmlFile = Join-Path $SETTINGS_DIR "current_settings.html"
+                    $htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8 -Force
+                    Log-Message "HTML report saved to: $htmlFile" "SUCCESS"
+                    Start-Process $htmlFile
+                }
+                catch {
+                    Log-Message "Error saving HTML report: $($_.Exception.Message)" "ERROR"
+                    [System.Windows.Forms.MessageBox]::Show(
+                        "Failed to save HTML report. Please check the log for details.",
+                        "Error",
+                        [System.Windows.Forms.MessageBoxButtons]::OK,
+                        [System.Windows.Forms.MessageBoxIcon]::Error
+                    )
+                }
             }
 
             Update-Progress -PercentComplete 100 -Status "Test complete"
@@ -966,9 +987,9 @@ function Load-SavedSettings {
     Log-Message "Starting to load saved settings from Documents folder" "INFO"
     
     # Ensure settings directory exists
-    if (-not (Test-Path $PSScriptRoot)) {
-        New-Item -ItemType Directory -Force -Path $PSScriptRoot
-        Log-Message "Created settings directory: $PSScriptRoot" "INFO"
+    if (-not (Test-Path $SETTINGS_DIR)) {
+        New-Item -ItemType Directory -Force -Path $SETTINGS_DIR
+        Log-Message "Created settings directory: $SETTINGS_DIR" "INFO"
     }
     
     # Load settings from Documents
