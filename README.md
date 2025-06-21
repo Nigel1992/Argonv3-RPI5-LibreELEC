@@ -1,6 +1,6 @@
 # 🛠️ Argon ONE V3 Setup Script for LibreELEC on Raspberry Pi 5
 
-[![Version](https://img.shields.io/badge/version-1.2.2-blue)](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/releases)
 [![Platform](https://img.shields.io/badge/platform-LibreELEC-green)](https://libreelec.tv/)
 [![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)](https://www.raspberrypi.com/)
 [![PowerShell](https://img.shields.io/badge/powershell-%3E%3D5.1-blue)](https://github.com/PowerShell/PowerShell)
@@ -9,6 +9,39 @@
 ## 📝 Description
 
 A powerful PowerShell GUI tool for configuring the Argon ONE V3 case for Raspberry Pi 5 running LibreELEC. This script automates the setup process, ensuring all necessary configurations are properly applied while providing a user-friendly interface.
+
+## 📦 What's New (v1.3.0)
+
+### Major Features
+- **Redesigned Test Configuration System**
+  - New intelligent configuration analysis
+  - Pre-check summary of current settings status
+  - Detailed comparison with selected configuration
+  - Optional HTML report generation with improved formatting
+  - Clear visualization of mismatched settings
+
+- **Enhanced Theme System**
+  - Complete dark mode implementation
+  - Proper theme persistence across all UI elements
+  - Improved contrast and readability in both themes
+  - Dynamic theme switching with visual feedback
+  - Consistent styling across all components
+
+### UI Improvements
+- Modernized button layouts and spacing
+- Enhanced visual feedback for user actions
+- Improved group box styling and organization
+- Better progress bar visibility in both themes
+- More intuitive theme toggle with status indication
+
+### Technical Improvements
+- Refactored theme management system
+- Improved error handling in configuration tests
+- Better memory management for HTML report generation
+- Enhanced SSH connection stability
+- Optimized configuration comparison logic
+
+[View all releases](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC/releases)
 
 ## 🚀 Quick Start
 

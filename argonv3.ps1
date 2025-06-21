@@ -31,7 +31,8 @@ $DarkTheme = @{
     LogText = [System.Drawing.Color]::FromArgb(220, 220, 220)
 }
 
-$CurrentTheme = $LightTheme
+# Make CurrentTheme a script-level variable
+$script:CurrentTheme = $LightTheme
 
 # Set consistent script directory
 $PSScriptRoot = "$env:USERPROFILE\Documents\ArgonSetup"
@@ -43,7 +44,7 @@ $CONNECTION_FILE = Join-Path $PSScriptRoot "connection_settings.xml"
 $LOG_FOLDER = Join-Path $PSScriptRoot "logs"
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $LOG_FILE = Join-Path $LOG_FOLDER "argon_setup_$timestamp.log"
-$SCRIPT_VERSION = "1.2.2 (03/07/2025)"
+$SCRIPT_VERSION = "1.3.0 (06/21/2025)"
 
 # Create logs directory if it doesn't exist
 if (-not (Test-Path $LOG_FOLDER)) {
@@ -655,6 +656,7 @@ function Test-CurrentSettings {
         
         Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
+        
         # Create SSH session
         $securePass = ConvertTo-SecureString $script:passTextBox.Text -AsPlainText -Force
         $cred = New-Object System.Management.Automation.PSCredential ($script:userTextBox.Text, $securePass)
@@ -664,8 +666,93 @@ function Test-CurrentSettings {
             Log-Message "Testing current configuration..." "INFO"
             Update-Progress -PercentComplete 20 -Status "Checking config.txt"
 
-            # Create HTML content with styling
-            $htmlContent = @"
+            # Check if settings match what's selected in the UI
+            $settingsMatch = $true
+            $mismatchedSettings = @()
+
+            # Check config.txt settings
+            $configContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "cat /flash/config.txt"
+            
+            # Common required settings
+            $requiredSettings = @(
+                "dtoverlay=gpio-ir,gpio_pin=23",
+                "dtparam=i2c=on",
+                "enable_uart=1",
+                "usb_max_current_enable=1"
+            )
+
+            # Add NVMe settings if applicable
+            if ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
+                $pcieGen = switch ($script:pcieCombo.SelectedItem) {
+                    "Gen 1" { "gen1" }
+                    "Gen 2" { "gen2" }
+                    "Gen 3" { "gen3" }
+                }
+                $requiredSettings += "dtparam=nvme"
+                $requiredSettings += "dtparam=pciex1_1=$pcieGen"
+            }
+
+            # Add DAC settings if applicable
+            if ($script:dacCheckbox.Checked) {
+                $requiredSettings += "dtoverlay=hifiberry-dacplus,slave"
+            }
+
+            # Check each required setting
+            foreach ($setting in $requiredSettings) {
+                $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -qF -- `"$setting`" /flash/config.txt"
+                if ($checkResult.ExitStatus -ne 0) {
+                    $settingsMatch = $false
+                    $mismatchedSettings += $setting
+                }
+            }
+
+            # Check EEPROM settings
+            Update-Progress -PercentComplete 50 -Status "Checking EEPROM"
+            $eepromContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config"
+            
+            # Set EEPROM requirements based on version
+            $requiredEeprom = if ($script:versionCombo.SelectedItem -eq "Argon V3 Normal") {
+                @("PSU_MAX_CURRENT=5000")
+            } else {
+                @(
+                    "BOOT_ORDER=0xf416",
+                    "PCIE_PROBE=1",
+                    "PSU_MAX_CURRENT=5000"
+                )
+            }
+
+            # Check EEPROM settings
+            foreach ($setting in $requiredEeprom) {
+                $settingName = $setting.Split('=')[0]
+                $settingValue = $setting.Split('=')[1]
+                $checkResult = Invoke-SSHCommand -SessionId $session.SessionId -Command "grep -w `"^$settingName=$settingValue`" /tmp/current_eeprom.conf"
+                if ($checkResult.ExitStatus -ne 0) {
+                    $settingsMatch = $false
+                    $mismatchedSettings += $setting
+                }
+            }
+
+            # Show initial result message
+            if ($settingsMatch) {
+                $viewReport = [System.Windows.Forms.MessageBox]::Show(
+                    "All your selected settings are already correctly applied!`n`nWould you like to view the detailed HTML report?",
+                    "Configuration Check",
+                    [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                    [System.Windows.Forms.MessageBoxIcon]::Information
+                )
+            } else {
+                $viewReport = [System.Windows.Forms.MessageBox]::Show(
+                    "Some settings do not match your current selection.`n`nMissing or incorrect settings:`n" + ($mismatchedSettings -join "`n") + "`n`nWould you like to view the detailed HTML report?",
+                    "Configuration Check",
+                    [System.Windows.Forms.MessageBoxButtons]::YesNo,
+                    [System.Windows.Forms.MessageBoxIcon]::Warning
+                )
+            }
+
+            # If user wants to see the report, generate and show it
+            if ($viewReport -eq [System.Windows.Forms.DialogResult]::Yes) {
+                # Create HTML content with styling
+                $htmlContent = @"
 <!DOCTYPE html>
 <html>
 <head>
@@ -696,7 +783,7 @@ function Test-CurrentSettings {
             padding: 15px;
             background-color: #f8f9fa;
             border-radius: 5px;
-            border-left: 4:px solid #0078D4;
+            border-left: 4px solid #0078D4;
         }
         .section h2 {
             color: #2D2D2D;
@@ -737,10 +824,9 @@ function Test-CurrentSettings {
         <h1>Argon V3 - Current Configuration</h1>
 "@
 
-            # Check config.txt settings
-            $configContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "cat /flash/config.txt"
-            if ($configContent.ExitStatus -eq 0) {
-                $htmlContent += @"
+                # Add Config.txt section
+                if ($configContent.ExitStatus -eq 0) {
+                    $htmlContent += @"
         <div class="section">
             <h2>CONFIG.TXT</h2>
             <div class="content">
@@ -748,13 +834,11 @@ $(($configContent.Output | Where-Object { $_.Trim() -ne "" }) -join "`n")
             </div>
         </div>
 "@
-            }
+                }
 
-            # Check EEPROM settings
-            Update-Progress -PercentComplete 50 -Status "Checking EEPROM"
-            $eepromContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config"
-            if ($eepromContent.ExitStatus -eq 0) {
-                $htmlContent += @"
+                # Add EEPROM section
+                if ($eepromContent.ExitStatus -eq 0) {
+                    $htmlContent += @"
         <div class="section">
             <h2>EEPROM SETTINGS</h2>
             <div class="content">
@@ -762,62 +846,62 @@ $(($eepromContent.Output | Where-Object { $_.Trim() -ne "" -and -not $_.StartsWi
             </div>
         </div>
 "@
-            }
+                }
 
-            # Check PCIe status if NVMe version is selected
-            if ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
-                Update-Progress -PercentComplete 75 -Status "Checking PCIe/NVMe"
-                $nvmeStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "lspci | grep -i nvme"
-                $htmlContent += @"
+                # Check PCIe status if NVMe version is selected
+                if ($script:versionCombo.SelectedItem -eq "Argon V3 with NVMe") {
+                    Update-Progress -PercentComplete 75 -Status "Checking PCIe/NVMe"
+                    $nvmeStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "lspci | grep -i nvme"
+                    $htmlContent += @"
         <div class="section">
             <h2>NVME STATUS</h2>
             <div class="content">
 "@
-                if ($nvmeStatus.ExitStatus -eq 0) {
-                    $htmlContent += @"
+                    if ($nvmeStatus.ExitStatus -eq 0) {
+                        $htmlContent += @"
 Device Found:
 $($nvmeStatus.Output)
             </div>
             <div class="status success">NVMe device detected</div>
 "@
-                } else {
-                    $htmlContent += @"
+                    } else {
+                        $htmlContent += @"
 No NVMe device detected
             </div>
             <div class="status warning">No NVMe device detected</div>
 "@
+                    }
+                    $htmlContent += "</div>"
                 }
-                $htmlContent += "</div>"
-            }
 
-            # Check DAC status if enabled
-            if ($script:dacCheckbox.Checked) {
-                Update-Progress -PercentComplete 90 -Status "Checking DAC"
-                $dacStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "aplay -l | grep -i hifiberry"
-                $htmlContent += @"
+                # Check DAC status if enabled
+                if ($script:dacCheckbox.Checked) {
+                    Update-Progress -PercentComplete 90 -Status "Checking DAC"
+                    $dacStatus = Invoke-SSHCommand -SessionId $session.SessionId -Command "aplay -l | grep -i hifiberry"
+                    $htmlContent += @"
         <div class="section">
             <h2>DAC STATUS</h2>
             <div class="content">
 "@
-                if ($dacStatus.ExitStatus -eq 0) {
-                    $htmlContent += @"
+                    if ($dacStatus.ExitStatus -eq 0) {
+                        $htmlContent += @"
 Device Found:
 $($dacStatus.Output)
             </div>
             <div class="status success">HiFiBerry DAC detected</div>
 "@
-                } else {
-                    $htmlContent += @"
+                    } else {
+                        $htmlContent += @"
 No HiFiBerry DAC detected
             </div>
             <div class="status warning">No HiFiBerry DAC detected</div>
 "@
+                    }
+                    $htmlContent += "</div>"
                 }
-                $htmlContent += "</div>"
-            }
 
-            # Add footer
-            $htmlContent += @"
+                # Add footer
+                $htmlContent += @"
         <div class="footer">
             Generated on $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")<br>
             Argon V3 LibreELEC Setup v$SCRIPT_VERSION
@@ -827,10 +911,11 @@ No HiFiBerry DAC detected
 </html>
 "@
 
-            # Save HTML to temp file and open in default browser
-            $htmlFile = Join-Path $PSScriptRoot "current_settings.html"
-            $htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8
-            Start-Process $htmlFile
+                # Save and show HTML report
+                $htmlFile = Join-Path $PSScriptRoot "current_settings.html"
+                $htmlContent | Out-File -FilePath $htmlFile -Encoding UTF8
+                Start-Process $htmlFile
+            }
 
             Update-Progress -PercentComplete 100 -Status "Test complete"
             Log-Message "Configuration test completed successfully" "SUCCESS"
@@ -992,19 +1077,70 @@ function Ensure-SSHModule {
     return $true
 }
 
+# Theme application function - define it early
+function Apply-Theme {
+    param(
+        [hashtable]$Theme
+    )
+    $script:CurrentTheme = $Theme
+    
+    # Only apply theme if form exists
+    if ($script:form) {
+        $script:form.BackColor = $Theme.Background
+        $connectionGroup.BackColor = $Theme.GroupBackground
+        $configGroup.BackColor = $Theme.GroupBackground
+        $connectionGroup.ForeColor = $Theme.Text
+        $configGroup.ForeColor = $Theme.Text
+        $ipLabel.ForeColor = $Theme.Text
+        $userLabel.ForeColor = $Theme.Text
+        $passLabel.ForeColor = $Theme.Text
+        $versionLabel.ForeColor = $Theme.Text
+        $pcieLabel.ForeColor = $Theme.Text
+        $dacCheckbox.ForeColor = $Theme.Text
+        $logPanel.BackColor = $Theme.LogBackground
+        $logTextBox.BackColor = $Theme.LogBackground
+        $logTextBox.ForeColor = $Theme.LogText
+        $script:progressLabel.ForeColor = $Theme.Text
+        $script:configProgress.BackColor = $Theme.ProgressBackground
+        
+        # Keep accent colors consistent
+        $headerPanel.BackColor = $THEME_PRIMARY
+        $headerLabel.ForeColor = $THEME_TEXT
+        $testButton.BackColor = $THEME_PRIMARY
+        $testButton.ForeColor = $THEME_TEXT
+        $applyButton.BackColor = $THEME_PRIMARY
+        $applyButton.ForeColor = $THEME_TEXT
+        $testConfigButton.BackColor = $THEME_PRIMARY
+        $testConfigButton.ForeColor = $THEME_TEXT
+        $footerPanel.BackColor = $THEME_SECONDARY
+        $themeToggle.BackColor = $THEME_PRIMARY
+        $themeToggle.ForeColor = $THEME_TEXT
+        $copyrightLabel.ForeColor = $THEME_TEXT
+        $versionLabel.ForeColor = $THEME_TEXT
+        
+        # Force refresh
+        $script:form.Refresh()
+    }
+}
+
 # Create the main form
 $script:form = New-Object System.Windows.Forms.Form
 $script:form.Text = "Argon V3 - LibreELEC Setup"
 $script:form.Size = New-Object System.Drawing.Size(800, $defaultHeight)
 $script:form.StartPosition = "CenterScreen"
-$script:form.BackColor = [System.Drawing.Color]::White
+$script:form.BackColor = $script:CurrentTheme.Background
 $script:form.MaximumSize = New-Object System.Drawing.Size(1200, $maxHeight)
 $script:form.MinimumSize = New-Object System.Drawing.Size(800, 500)
 $script:form.MaximizeBox = $false
 $script:form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle
 
-# Add form load event to load settings
-$script:form.Add_Shown({ Log-Message "Form shown, loading settings from Documents..." "INFO"; Load-SavedSettings; Log-Message "Settings load complete" "INFO" })
+# Add form load event to load settings and apply theme
+$script:form.Add_Shown({ 
+    Log-Message "Form shown, loading settings from Documents..." "INFO"
+    Load-SavedSettings
+    Log-Message "Settings load complete" "INFO"
+    Apply-Theme $script:CurrentTheme
+})
 
 # Create main TableLayoutPanel
 $mainLayout = New-Object System.Windows.Forms.TableLayoutPanel
@@ -1116,19 +1252,27 @@ $applyButton.BackColor = $THEME_PRIMARY
 $applyButton.ForeColor = [System.Drawing.Color]::White
 $applyButton.Add_Click({ Apply-Configuration })
 
-$configGroup.Controls.AddRange(@($versionLabel, $script:versionCombo, $pcieLabel, $script:pcieCombo, $dacCheckbox, $applyButton))
+$testConfigButton = New-Object System.Windows.Forms.Button
+$testConfigButton.Text = "Test Configuration"
+$testConfigButton.Location = New-Object System.Drawing.Point(560, 70)
+$testConfigButton.Size = New-Object System.Drawing.Size(150, 30)
+$testConfigButton.BackColor = $THEME_PRIMARY
+$testConfigButton.ForeColor = [System.Drawing.Color]::White
+$testConfigButton.Add_Click({ Test-CurrentSettings })
+
+$configGroup.Controls.AddRange(@($versionLabel, $script:versionCombo, $pcieLabel, $script:pcieCombo, $dacCheckbox, $applyButton, $testConfigButton))
 $mainLayout.Controls.Add($configGroup, 0, 2)
 
 # Log and Progress Panel
 $logPanel = New-Object System.Windows.Forms.Panel
 $logPanel.Dock = [System.Windows.Forms.DockStyle]::Fill
 $logPanel.Padding = New-Object System.Windows.Forms.Padding(10)
-$logPanel.BackColor = $CurrentTheme.LogBackground
+$logPanel.BackColor = $script:CurrentTheme.LogBackground
 
 $logTextBox = New-Object System.Windows.Forms.RichTextBox
 $logTextBox.Dock = [System.Windows.Forms.DockStyle]::Fill
-$logTextBox.BackColor = $CurrentTheme.LogBackground
-$logTextBox.ForeColor = $CurrentTheme.LogText
+$logTextBox.BackColor = $script:CurrentTheme.LogBackground
+$logTextBox.ForeColor = $script:CurrentTheme.LogText
 $logTextBox.Font = New-Object System.Drawing.Font("Consolas", 9)
 $logTextBox.ReadOnly = $true
 $logTextBox.ScrollBars = [System.Windows.Forms.RichTextBoxScrollBars]::Vertical
@@ -1163,7 +1307,7 @@ $script:progressLabel = New-Object System.Windows.Forms.Label
 $script:progressLabel.Dock = [System.Windows.Forms.DockStyle]::Bottom
 $script:progressLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
 $script:progressLabel.Text = "Ready (0%)"
-$script:progressLabel.ForeColor = $CurrentTheme.Text
+$script:progressLabel.ForeColor = $script:CurrentTheme.Text
 
 $logPanel.Controls.Add($logTextBox)
 $logPanel.Controls.Add($script:progressLabel)
@@ -1187,15 +1331,17 @@ $footerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([Sys
 
 # Theme Toggle (left column)
 $themeToggle = New-Object System.Windows.Forms.Button
-$themeToggle.Text = "Toggle Theme"
+$themeToggle.Text = "Switch to Dark Theme"
 $themeToggle.Dock = [System.Windows.Forms.DockStyle]::Fill
 $themeToggle.BackColor = $THEME_PRIMARY
 $themeToggle.ForeColor = [System.Drawing.Color]::White
 $themeToggle.Add_Click({
-    if ($CurrentTheme -eq $LightTheme) {
+    if ($script:CurrentTheme -eq $LightTheme) {
         Apply-Theme $DarkTheme
+        $themeToggle.Text = "Switch to Light Theme"
     } else {
         Apply-Theme $LightTheme
+        $themeToggle.Text = "Switch to Dark Theme"
     }
 })
 $footerLayout.Controls.Add($themeToggle, 0, 0)
@@ -1236,41 +1382,3 @@ if (!(Ensure-SSHModule)) {
 
 # Show the form
 $null = $script:form.ShowDialog()
-
-# Apply initial theme
-Apply-Theme $LightTheme
-
-# Form height adjustments
-$script:form.Size = New-Object System.Drawing.Size(800, $defaultHeight)
-
-# Theme application function
-function Apply-Theme {
-    param(
-        [hashtable]$Theme
-    )
-    $CurrentTheme = $Theme
-    $script:form.BackColor = $Theme.Background
-    $headerPanel.BackColor = $THEME_PRIMARY
-    $headerLabel.ForeColor = $THEME_TEXT
-    $connectionGroup.ForeColor = $Theme.Text
-    $ipLabel.ForeColor = $Theme.Text
-    $userLabel.ForeColor = $Theme.Text
-    $passLabel.ForeColor = $Theme.Text
-    $testButton.BackColor = $THEME_PRIMARY
-    $testButton.ForeColor = $THEME_TEXT
-    $configGroup.ForeColor = $Theme.Text
-    $versionLabel.ForeColor = $Theme.Text
-    $pcieLabel.ForeColor = $Theme.Text
-    $dacCheckbox.ForeColor = $Theme.Text
-    $applyButton.BackColor = $THEME_PRIMARY
-    $applyButton.ForeColor = $THEME_TEXT
-    $logPanel.BackColor = $Theme.LogBackground
-    $logTextBox.BackColor = $Theme.LogBackground
-    $logTextBox.ForeColor = $Theme.LogText
-    $script:progressLabel.ForeColor = $Theme.Text
-    $footerPanel.BackColor = $THEME_SECONDARY
-    $themeToggle.BackColor = $THEME_PRIMARY
-    $themeToggle.ForeColor = $THEME_TEXT
-    $copyrightLabel.ForeColor = $THEME_TEXT
-    $versionLabel.ForeColor = $THEME_TEXT
-}
