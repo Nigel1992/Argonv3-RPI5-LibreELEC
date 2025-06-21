@@ -79,10 +79,7 @@ if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) { Inst
 | Feature | Description |
 |---------|-------------|
 | 🖥️ GUI Interface | Modern, intuitive graphical user interface |
-| 🌡️ Fan Control | Advanced temperature-based fan control |
-| ⚡ Power Management | Customizable power button actions |
 | 💾 Config Backup | Creates backups of your settings |
-| 📊 Monitoring | Real-time temperature and fan monitoring |
 | 📝 Logging | Comprehensive logging system |
 | 🔒 Secure | Safe SSH connection handling |
 | 📋 Reports | Configuration status reports |
