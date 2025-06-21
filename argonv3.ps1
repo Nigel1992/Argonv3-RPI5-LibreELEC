@@ -497,7 +497,7 @@ Please test your connection first.",
             # Set EEPROM updates based on version
             $missingEepromUpdates = @()
             $eepromChanged = $false # Initialize here
-            $eepromUpdates = if ($script:versionCombo.SelectedItem -eq "Argon V3 Normal") {
+            $eepromUpdates = if ($script:versionCombo.SelectedItem -eq "Argon V3") {
                 @("PSU_MAX_CURRENT=5000")
             } else {
                 @(
@@ -727,7 +727,7 @@ function Test-CurrentSettings {
             $eepromContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config"
             
             # Set EEPROM requirements based on version
-            $requiredEeprom = if ($script:versionCombo.SelectedItem -eq "Argon V3 Normal") {
+            $requiredEeprom = if ($script:versionCombo.SelectedItem -eq "Argon V3") {
                 @("PSU_MAX_CURRENT=5000")
             } else {
                 @(
@@ -1240,7 +1240,7 @@ $script:versionCombo.Location = New-Object System.Drawing.Point(150, 30)
 $script:versionCombo.Size = New-Object System.Drawing.Size(200, 25)
 $script:versionCombo.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
 $script:versionCombo.Items.Clear()
-[void]$script:versionCombo.Items.AddRange(@("Argon V3 Normal", "Argon V3 with NVMe"))
+[void]$script:versionCombo.Items.AddRange(@("Argon V3", "Argon V3 with NVMe"))
 
 $pcieLabel = New-Object System.Windows.Forms.Label
 $pcieLabel.Text = "PCIe Generation:"
