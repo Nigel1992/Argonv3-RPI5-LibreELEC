@@ -7,12 +7,13 @@
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 
 <details>
-  <summary>Click to reveal image</summary>
-
+  <summary>Click to reveal image of GUI</summary>
 ![image](https://github.com/user-attachments/assets/cd12fd4d-a54b-423c-982c-2fa4f268fbc7)
-
 </details>
-
+<details>
+  <summary>Click to reveal image of HTML Report</summary>
+![image](https://github.com/user-attachments/assets/41f627e4-5ffa-44c1-ab3c-b39fb1b818ba)
+</details>
 
 
 
