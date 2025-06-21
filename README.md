@@ -22,16 +22,23 @@ This project is free — if you find it valuable, please consider donating to a 
 
 ---
 
-### 🏥 Suggested Charities
+### 🌍 Suggested Charities (Health & Climate)
 
-Feel free to donate to any organization you trust. These are just suggestions:
+If you’d like to support this project, please consider donating to one of these trusted organizations working on global health or climate issues:
 
-- [Doctors Without Borders](https://donate.doctorswithoutborders.org/)
-- [UNICEF](https://www.unicef.org/donate)
-- [The Water Project](https://thewaterproject.org/donate)
-- [World Central Kitchen](https://wck.org/donate)
+#### 🏥 Health & Humanitarian Aid
+- [**Doctors Without Borders**](https://donate.doctorswithoutborders.org/) – Emergency medical care in war zones and disaster areas.
+- [**UNICEF**](https://help.unicef.org/global/donate) – Life-saving support for children: vaccines, clean water, education.
+- [**World Central Kitchen**](https://wck.org/donate) – Meals for communities in crisis due to disaster or war.
+- [**GiveWell – Top Charities Fund**](https://www.givewell.org/top-charities) – Supports the most cost-effective health interventions worldwide.
 
----
+#### 🌱 Climate & Environment
+- [**The Water Project**](https://thewaterproject.org/donate) – Clean water solutions for sub-Saharan African communities.
+- [**Rainforest Alliance**](https://www.rainforest-alliance.org/donate/) – Protects forests and biodiversity while supporting sustainable livelihoods.
+- [**Charity: Water**](https://www.charitywater.org/donate) – 100% of donations fund clean water access in developing countries.
+
+> 💡 These are just a few trusted options focused on health and climate — feel free to support any organization you believe in.
+
 
 ## 🙌 Donor Recognition
 
