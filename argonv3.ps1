@@ -681,7 +681,7 @@ function Test-CurrentSettings {
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         
         # Remove old host key for this IP from Posh-SSH known_hosts
-        $knownHostsPath = Join-Path $env:APPDATA 'Posh-SSH' 'known_hosts'
+        $knownHostsPath = "$env:APPDATA\Posh-SSH\known_hosts"
         $targetIP = $script:ipTextBox.Text
         if (Test-Path $knownHostsPath) {
             $lines = Get-Content $knownHostsPath
