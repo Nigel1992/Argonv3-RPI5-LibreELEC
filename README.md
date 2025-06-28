@@ -1,6 +1,6 @@
 # 🛠️ Argon ONE V3 Setup Script for LibreELEC on Raspberry Pi 5
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue)](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC)
+[![Version](https://img.shields.io/badge/version-1.4.0.1-blue)](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC)
 [![Platform](https://img.shields.io/badge/platform-LibreELEC-green)](https://libreelec.tv/)
 [![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)](https://www.raspberrypi.com/)
 [![PowerShell](https://img.shields.io/badge/powershell-%3E%3D5.1-blue)](https://github.com/PowerShell/PowerShell)
@@ -20,20 +20,37 @@
 
 </details>
 
+## 🆕 What's New in v1.4.0.1 (28/6/2025)
 
+### 🔧 Bug Fixes
+- **SSH Connection Issues**: Fixed SSH session creation in Test-CurrentSettings function
+  - Now uses same robust connection method as Test-SSHConnection
+  - Added fallback key exchange algorithms for better compatibility
+  - Improved error handling with proper session validation
+  - Auto-removes old host keys to prevent connection conflicts
+- **EEPROM Detection**: Fixed false negative reports for existing EEPROM settings
+  - Added missing rpi-eeprom-config file creation in test function
+  - Ensures /tmp/current_eeprom.conf exists before checking settings
+- **Path Construction**: Fixed Join-Path syntax error in known_hosts file handling
+
+### 🚀 Improvements
+- Enhanced error messages and user feedback
+- Better SSH connection failure diagnostics
+- Clear troubleshooting steps for connection issues
+- Improved session validation with null checks
 
 ## 🌍 Donate to Charity Instead of Me
 
 This project is free — if you find it valuable, please consider donating to a good cause instead.
 
-Why? Because this project was built to help people, and there’s no better way to pay that forward than by supporting others in need. Whether it's providing clean water, funding medical aid, or fighting climate change, your donation can make a real difference.
+Why? Because this project was built to help people, and there's no better way to pay that forward than by supporting others in need. Whether it's providing clean water, funding medical aid, or fighting climate change, your donation can make a real difference.
 
 
 ### ✅ How It Works
 
 1. **Donate directly** to any charity you care about (see suggestions below).
 2. **Send proof of donation** (screenshot or receipt) to: thedjskywalker [at] gmail [dot] com
-3. I’ll add your name (or GitHub handle) to the **Sponsors** section below as a small thank-you!
+3. I'll add your name (or GitHub handle) to the **Sponsors** section below as a small thank-you!
 
 > 💡 I do not handle any money. Your donation goes **directly to the charity**.
 
@@ -41,7 +58,7 @@ Why? Because this project was built to help people, and there’s no better way 
 
 ### 🌍 Suggested Charities (Health & Climate)
 
-If you’d like to support this project, please consider donating to one of these trusted organizations working on global health or climate issues:
+If you'd like to support this project, please consider donating to one of these trusted organizations working on global health or climate issues:
 
 #### 🏥 Health & Humanitarian Aid
 - [**Doctors Without Borders**](https://donate.doctorswithoutborders.org/) – Emergency medical care in war zones and disaster areas.
