@@ -44,7 +44,7 @@ $CONNECTION_FILE = Join-Path $SETTINGS_DIR "connection_settings.xml"
 $LOG_FOLDER = Join-Path $SETTINGS_DIR "logs"
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $script:LOG_FILE = Join-Path $SETTINGS_DIR "argonv3.log"
-$SCRIPT_VERSION = "1.4.0 (28/6/2025)"
+$SCRIPT_VERSION = "1.4.0.1 (28/6/2025)"
 
 # Create logs directory if it doesn't exist
 if (-not (Test-Path $LOG_FOLDER)) {
