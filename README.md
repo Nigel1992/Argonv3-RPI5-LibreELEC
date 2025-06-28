@@ -129,6 +129,9 @@ if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) { Inst
     └── argon_setup_*.log   # Session logs
 ```
 
+## 𖢥 Known Bugs
+- Test Configuration button might fail even if valid SSH info, press it again and it'll work.
+
 ## 🔍 Usage Guide
 
 1. **Initial Setup**
