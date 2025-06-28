@@ -130,7 +130,7 @@ if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) { Inst
 ```
 
 ## 𖢥 Known Bugs
-- Test Configuration button might fail even if valid SSH info, press it again and it'll work.
+- Test Configuration button might fail even if valid SSH info, press it again and it should work.
 
 ## 🔍 Usage Guide
 
