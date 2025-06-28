@@ -44,7 +44,7 @@ $CONNECTION_FILE = Join-Path $SETTINGS_DIR "connection_settings.xml"
 $LOG_FOLDER = Join-Path $SETTINGS_DIR "logs"
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $script:LOG_FILE = Join-Path $SETTINGS_DIR "argonv3.log"
-$SCRIPT_VERSION = "1.3.0 (06/21/2025)"
+$SCRIPT_VERSION = "1.4.0 (28/6/2025)"
 
 # Create logs directory if it doesn't exist
 if (-not (Test-Path $LOG_FOLDER)) {
@@ -357,8 +357,15 @@ Please test your connection first.",
             }
         }
 
-        if (-not $session) {
-            Log-Message "No valid SSH session established" "ERROR"
+        # Check if SSH session was created successfully
+        if (-not $session -or -not $session.SessionId) {
+            Log-Message "Failed to create SSH session to $($script:ipTextBox.Text). Please check your credentials and network connection." "ERROR"
+            [System.Windows.Forms.MessageBox]::Show(
+                "Failed to establish SSH connection to $($script:ipTextBox.Text).`n`nPlease verify:`n- IP address is correct`n- Username and password are correct`n- SSH is enabled on LibreELEC`n- Device is reachable on the network",
+                "SSH Connection Failed",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
             return
         }
 
@@ -673,10 +680,64 @@ function Test-CurrentSettings {
         Export-Clixml -Path $CONNECTION_FILE -InputObject $connectionSettings -Force
         Export-Clixml -Path $SETTINGS_FILE -InputObject $allSettings -Force
         
+        # Remove old host key for this IP from Posh-SSH known_hosts
+        $knownHostsPath = Join-Path $env:APPDATA 'Posh-SSH' 'known_hosts'
+        $targetIP = $script:ipTextBox.Text
+        if (Test-Path $knownHostsPath) {
+            $lines = Get-Content $knownHostsPath
+            $filtered = $lines | Where-Object { $_ -notmatch "^$targetIP[ ,]" }
+            $filtered | Set-Content $knownHostsPath
+        }
+        
         # Create SSH session
         $securePass = ConvertTo-SecureString $script:passTextBox.Text -AsPlainText -Force
         $cred = New-Object System.Management.Automation.PSCredential ($script:userTextBox.Text, $securePass)
-        $session = New-SSHSession -ComputerName $script:ipTextBox.Text -Credential $cred -AcceptKey
+        
+        # Use the same robust SSH connection method as Test-SSHConnection
+        $sshParams = @{
+            ComputerName = $script:ipTextBox.Text
+            Credential = $cred
+            AcceptKey = $true
+            ErrorAction = 'Stop'
+            WarningAction = 'SilentlyContinue'
+            Force = $true
+        }
+
+        # First try with default settings
+        try {
+            $session = New-SSHSession @sshParams
+        }
+        catch {
+            Log-Message "Default connection attempt failed, trying with alternative settings..." "WARNING"
+            
+            # Try with explicit key exchange algorithm
+            try {
+                $sshParams['KeyExchange'] = 'diffie-hellman-group14-sha1,diffie-hellman-group-exchange-sha256'
+                $session = New-SSHSession @sshParams
+            }
+            catch {
+                Log-Message "All connection attempts failed: $($_.Exception.Message)" "ERROR"
+                [System.Windows.Forms.MessageBox]::Show(
+                    "Failed to establish SSH connection to $($script:ipTextBox.Text).`n`nPlease verify:`n- IP address is correct`n- Username and password are correct`n- SSH is enabled on LibreELEC`n- Device is reachable on the network",
+                    "SSH Connection Failed",
+                    [System.Windows.Forms.MessageBoxButtons]::OK,
+                    [System.Windows.Forms.MessageBoxIcon]::Error
+                )
+                return
+            }
+        }
+
+        # Check if SSH session was created successfully
+        if (-not $session -or -not $session.SessionId) {
+            Log-Message "Failed to create SSH session to $($script:ipTextBox.Text). Please check your credentials and network connection." "ERROR"
+            [System.Windows.Forms.MessageBox]::Show(
+                "Failed to establish SSH connection to $($script:ipTextBox.Text).`n`nPlease verify:`n- IP address is correct`n- Username and password are correct`n- SSH is enabled on LibreELEC`n- Device is reachable on the network",
+                "SSH Connection Failed",
+                [System.Windows.Forms.MessageBoxButtons]::OK,
+                [System.Windows.Forms.MessageBoxIcon]::Error
+            )
+            return
+        }
 
         try {
             Log-Message "Testing current configuration..." "INFO"
@@ -725,6 +786,9 @@ function Test-CurrentSettings {
             # Check EEPROM settings
             Update-Progress -PercentComplete 50 -Status "Checking EEPROM"
             $eepromContent = Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config"
+            
+            # Create current EEPROM configuration file for checking
+            Invoke-SSHCommand -SessionId $session.SessionId -Command "rpi-eeprom-config > /tmp/current_eeprom.conf"
             
             # Set EEPROM requirements based on version
             $requiredEeprom = if ($script:versionCombo.SelectedItem -eq "Argon V3") {
