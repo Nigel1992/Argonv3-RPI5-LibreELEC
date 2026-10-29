@@ -5,6 +5,8 @@
 
 # 🛠️ Argon ONE V3 Setup Script for LibreELEC on Raspberry Pi 5
 
+[![Vibe Coded](https://img.shields.io/badge/Vibe_Coded-✨-8A2BE2?style=for-the-badge)](https://github.com)
+
 [![Version](https://img.shields.io/badge/version-1.4.0.1-blue)](https://github.com/Nigel1992/Argonv3-RPI5-LibreELEC)
 [![Platform](https://img.shields.io/badge/platform-LibreELEC-green)](https://libreelec.tv/)
 [![RPi](https://img.shields.io/badge/device-Raspberry%20Pi%205-red)](https://www.raspberrypi.com/)
